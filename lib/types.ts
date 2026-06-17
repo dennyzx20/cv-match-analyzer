@@ -1,4 +1,5 @@
 export type AtsRiskLevel = "Low" | "Medium" | "High";
+export type LanguageCode = "it" | "en";
 
 export type CvAnalysisResult = {
   overallMatchScore: number;
@@ -21,5 +22,6 @@ export type LeadCapture = {
 
 export type AnalyzeResponse = {
   analysis?: CvAnalysisResult;
+  detectedLanguage?: LanguageCode;
   error?: string;
 };

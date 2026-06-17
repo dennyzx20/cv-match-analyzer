@@ -1,14 +1,20 @@
-export function buildCvAnalysisPrompt(cvText: string, jobDescription: string) {
+import type { LanguageCode } from "@/lib/types";
+
+export function buildCvAnalysisPrompt(cvText: string, jobDescription: string, language: LanguageCode) {
+  const responseLanguage = language === "it" ? "Italian" : "English";
+
   return [
     {
       role: "system" as const,
       content:
-        "You are an expert recruiter, resume strategist, and ATS optimization specialist. Always answer in English. Return only valid JSON matching the requested schema. Be concrete, evidence-based, and useful. Do not invent experience that is not present in the CV."
+        `You are an expert recruiter, resume strategist, and ATS optimization specialist. The detected CV language is ${language}. If language is Italian, respond fully in Italian. If language is English, respond in English. Keep structure identical. Return only valid JSON matching the requested schema. Be concrete, evidence-based, and useful. Do not invent experience that is not present in the CV.`
     },
     {
       role: "user" as const,
       content: `
 Analyze the CV against the job description as both an experienced recruiter and an ATS-style screening system.
+
+Detected response language: ${responseLanguage}
 
 Scoring requirements:
 - overallMatchScore must be an integer from 0 to 100.

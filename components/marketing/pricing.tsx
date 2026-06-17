@@ -39,7 +39,7 @@ export function Pricing() {
           <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">Pricing</p>
           <h2 className="mt-3 text-3xl font-bold text-ink">Start free, unlock the full report when it matters</h2>
           <p className="mt-4 leading-7 text-muted">
-            The paywall is mocked for this MVP. Stripe can be added later without changing the analysis flow.
+            Start with a free ATS-style preview, then unlock the complete report through Stripe Checkout.
           </p>
         </div>
 

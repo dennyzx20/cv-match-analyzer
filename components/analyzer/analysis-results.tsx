@@ -1,22 +1,58 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Lock, RotateCcw, Sparkles, X } from "lucide-react";
+import { CheckCircle2, Globe2, Loader2, Lock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { CvAnalysisResult, LeadCapture } from "@/lib/types";
+import type { CvAnalysisResult, LanguageCode, LeadCapture } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type AnalysisResultsProps = {
   analysis: CvAnalysisResult;
+  detectedLanguage: LanguageCode;
+  isFullReportUnlocked: boolean;
   leadCapture: LeadCapture | null;
   onReset: () => void;
 };
 
-export function AnalysisResults({ analysis, leadCapture, onReset }: AnalysisResultsProps) {
-  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+const premiumPlaceholders = [
+  "Personalized detail available in the full report",
+  "Role-specific insight available after unlock",
+  "Complete recommendation hidden in free preview"
+];
+
+export function AnalysisResults({
+  analysis,
+  detectedLanguage,
+  isFullReportUnlocked,
+  leadCapture,
+  onReset
+}: AnalysisResultsProps) {
+  const [checkoutError, setCheckoutError] = useState("");
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const previewMissingKeywords = analysis.missingKeywords.slice(0, 3);
   const previewStrengths = analysis.strengths.slice(0, 3);
+
+  async function handleUnlock() {
+    setCheckoutError("");
+    setIsCheckoutLoading(true);
+
+    try {
+      const response = await fetch("/api/stripe/create-checkout", {
+        method: "POST"
+      });
+      const data = (await response.json()) as { url?: string; error?: string };
+
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || "Stripe checkout could not be started.");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Stripe checkout could not be started.");
+      setIsCheckoutLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -27,6 +63,7 @@ export function AnalysisResults({ analysis, leadCapture, onReset }: AnalysisResu
             <div className="mb-3 flex flex-wrap items-center gap-3">
               <RiskBadge level={analysis.atsRiskLevel} />
               <span className="text-sm font-medium text-muted">ATS risk level</span>
+              <LanguageBadge language={detectedLanguage} />
             </div>
             <h2 className="text-2xl font-bold text-ink">Your CV match report</h2>
             <p className="mt-3 leading-7 text-muted">{analysis.shortSummary}</p>
@@ -44,16 +81,24 @@ export function AnalysisResults({ analysis, leadCapture, onReset }: AnalysisResu
         <ListCard title="Strengths preview" items={previewStrengths} tone="green" />
       </div>
 
-      <PaywallCard onUnlock={() => setIsPaywallOpen(true)} />
-
-      <LockedReportPreview analysis={analysis} onUnlock={() => setIsPaywallOpen(true)} />
+      {isFullReportUnlocked ? (
+        <>
+          <Card className="border-green-200 bg-green-50 p-5 md:p-6">
+            <p className="font-semibold text-signal-green">Full report unlocked after Stripe checkout.</p>
+          </Card>
+          <FullReport analysis={analysis} />
+        </>
+      ) : (
+        <>
+          <PaywallCard error={checkoutError} isLoading={isCheckoutLoading} onUnlock={handleUnlock} />
+          <LockedReportPreview onUnlock={handleUnlock} />
+        </>
+      )}
 
       <Button onClick={onReset} variant="secondary">
         <RotateCcw size={17} aria-hidden="true" />
         Analyze another CV
       </Button>
-
-      {isPaywallOpen ? <ComingSoonModal onClose={() => setIsPaywallOpen(false)} /> : null}
     </div>
   );
 }
@@ -86,7 +131,27 @@ function RiskBadge({ level }: { level: CvAnalysisResult["atsRiskLevel"] }) {
   );
 }
 
-function PaywallCard({ onUnlock }: { onUnlock: () => void }) {
+function LanguageBadge({ language }: { language: LanguageCode }) {
+  const label = language === "it" ? "Detected language: Italiano" : "Detected language: English";
+  const flag = language === "it" ? "IT" : "UK";
+
+  return (
+    <span className="inline-flex items-center gap-2 rounded-md bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-700">
+      <Globe2 size={15} aria-hidden="true" />
+      {label} ({flag})
+    </span>
+  );
+}
+
+function PaywallCard({
+  error,
+  isLoading,
+  onUnlock
+}: {
+  error: string;
+  isLoading: boolean;
+  onUnlock: () => void;
+}) {
   return (
     <Card className="overflow-hidden border-brand-100">
       <div className="grid gap-5 bg-white p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7">
@@ -105,17 +170,25 @@ function PaywallCard({ onUnlock }: { onUnlock: () => void }) {
         </div>
         <div className="rounded-lg border border-line bg-surface p-4 md:min-w-56">
           <p className="text-sm font-medium text-muted">One-time payment</p>
-          <p className="mt-1 text-4xl font-bold text-ink">€19</p>
-          <Button onClick={onUnlock} className="mt-4 w-full">
-            Unlock full report for €19
+          <p className="mt-1 text-4xl font-bold text-ink">{"\u20ac"}19</p>
+          <Button onClick={onUnlock} className="mt-4 w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 size={17} className="animate-spin" aria-hidden="true" />
+                Opening checkout
+              </>
+            ) : (
+              "Unlock full report for \u20ac19"
+            )}
           </Button>
+          {error ? <p className="mt-3 text-sm leading-6 text-signal-red">{error}</p> : null}
         </div>
       </div>
     </Card>
   );
 }
 
-function LockedReportPreview({ onUnlock }: { analysis: CvAnalysisResult; onUnlock: () => void }) {
+function LockedReportPreview({ onUnlock }: { onUnlock: () => void }) {
   const lockedSections = [
     { title: "All missing keywords", tone: "red" as const },
     { title: "Matching keywords", tone: "green" as const },
@@ -125,7 +198,7 @@ function LockedReportPreview({ onUnlock }: { analysis: CvAnalysisResult; onUnloc
   ];
 
   return (
-    <div className="relative">
+    <div>
       <div className="grid gap-5 lg:grid-cols-2">
         {lockedSections.map((section) => (
           <LockedListCard key={section.title} {...section} onUnlock={onUnlock} />
@@ -173,12 +246,6 @@ function LockedTextCard({ title, onUnlock }: { title: string; onUnlock: () => vo
   );
 }
 
-const premiumPlaceholders = [
-  "Personalized detail available in the full report",
-  "Role-specific insight available after unlock",
-  "Complete recommendation hidden in free preview"
-];
-
 function LockedOverlay({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-white/80 p-5 text-center backdrop-blur-sm">
@@ -188,38 +255,33 @@ function LockedOverlay({ onUnlock }: { onUnlock: () => void }) {
         </div>
         <p className="mt-3 font-semibold text-ink">Full report locked</p>
         <button type="button" className="mt-2 text-sm font-semibold text-brand-600 hover:text-brand-700" onClick={onUnlock}>
-          Unlock for €19
+          Unlock for {"\u20ac"}19
         </button>
       </div>
     </div>
   );
 }
 
-function ComingSoonModal({ onClose }: { onClose: () => void }) {
+function FullReport({ analysis }: { analysis: CvAnalysisResult }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 px-5 py-8">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-soft">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600">
-            <Sparkles size={21} aria-hidden="true" />
-          </div>
-          <button
-            type="button"
-            className="focus-ring rounded-md p-2 text-muted hover:bg-surface hover:text-ink"
-            aria-label="Close modal"
-            onClick={onClose}
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </div>
-        <h3 className="mt-5 text-2xl font-bold text-ink">Payment integration coming soon</h3>
-        <p className="mt-3 leading-7 text-muted">
-          Stripe is not enabled in this MVP. The full report paywall is ready for checkout integration in a future
-          version.
-        </p>
-        <Button onClick={onClose} className="mt-6 w-full">
-          Got it
-        </Button>
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <ListCard title="All missing keywords" items={analysis.missingKeywords} tone="red" />
+        <ListCard title="Matching keywords" items={analysis.matchingKeywords} tone="green" />
+        <ListCard title="Weaknesses" items={analysis.weaknesses} tone="amber" />
+        <ListCard title="Suggested CV improvements" items={analysis.suggestedCvImprovements} tone="blue" />
+        <ListCard title="Recommended skills to add" items={analysis.recommendedSkillsToAdd} tone="blue" />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+        <Card className="p-5 md:p-6">
+          <h3 className="text-lg font-semibold text-ink">AI rewritten professional summary</h3>
+          <p className="mt-3 leading-7 text-muted">{analysis.rewrittenProfessionalSummary}</p>
+        </Card>
+        <Card className="p-5 md:p-6">
+          <h3 className="text-lg font-semibold text-ink">Final recommendation</h3>
+          <p className="mt-3 leading-7 text-muted">{analysis.finalRecommendation}</p>
+        </Card>
       </div>
     </div>
   );

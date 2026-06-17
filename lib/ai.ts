@@ -1,10 +1,11 @@
 import OpenAI from "openai";
 import { buildCvAnalysisPrompt } from "@/lib/prompt";
-import type { CvAnalysisResult } from "@/lib/types";
+import type { CvAnalysisResult, LanguageCode } from "@/lib/types";
 
 type AnalyzeInput = {
   cvText: string;
   jobDescription: string;
+  language: LanguageCode;
 };
 
 const fallbackModel = "gpt-4o-mini";
@@ -25,7 +26,7 @@ export async function analyzeCvMatch(input: AnalyzeInput): Promise<CvAnalysisRes
 
   const completion = await client.chat.completions.create({
     model,
-    messages: buildCvAnalysisPrompt(input.cvText, input.jobDescription),
+    messages: buildCvAnalysisPrompt(input.cvText, input.jobDescription, input.language),
     temperature: 0.2,
     response_format: { type: "json_object" }
   });

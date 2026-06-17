@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { analyzeCvMatch } from "@/lib/ai";
+import { detectLanguage } from "@/lib/language";
 import { extractPdfText, validatePdfFile } from "@/lib/pdf";
 
 export const runtime = "nodejs";
@@ -40,12 +41,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const detectedLanguage = detectLanguage(cvText);
     const analysis = await analyzeCvMatch({
       cvText,
-      jobDescription: jobDescription.trim()
+      jobDescription: jobDescription.trim(),
+      language: detectedLanguage
     });
 
-    return NextResponse.json({ analysis });
+    return NextResponse.json({ analysis, detectedLanguage });
   } catch (error) {
     console.error("Analyze API error", error);
 
