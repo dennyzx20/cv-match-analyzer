@@ -19,17 +19,17 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="bg-surface py-16">
+    <section id="faq" className="relative py-20">
       <div className="mx-auto max-w-6xl px-5">
-        <div className="max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">FAQ</p>
-          <h2 className="mt-3 text-3xl font-bold text-ink">Common questions</h2>
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-bold uppercase tracking-wide text-blue-600">FAQ</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Common questions</h2>
         </div>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {faqs.map((faq) => (
-            <div key={faq.question} className="rounded-lg border border-line bg-white p-6">
-              <h3 className="font-semibold text-ink">{faq.question}</h3>
-              <p className="mt-2 leading-7 text-muted">{faq.answer}</p>
+            <div key={faq.question} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/60">
+              <h3 className="font-bold text-slate-950">{faq.question}</h3>
+              <p className="mt-2 leading-7 text-slate-600">{faq.answer}</p>
             </div>
           ))}
         </div>
