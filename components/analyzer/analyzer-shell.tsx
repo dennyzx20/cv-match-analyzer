@@ -6,28 +6,29 @@ import { AnalysisResults } from "@/components/analyzer/analysis-results";
 import { LeadCaptureForm } from "@/components/analyzer/lead-capture-form";
 import type { AnalyzeResponse, CvAnalysisResult, LanguageCode, LeadCapture } from "@/lib/types";
 
-const storedReportKey = "cv-match-analyzer-report";
 const storedHistoryKey = "cv-match-analyzer-history";
+const latestAnalysisIdKey = "cv-match-analyzer-latest-id";
 
 type StoredReport = {
-  id?: string;
+  id: string;
   analysis: CvAnalysisResult;
   detectedLanguage: LanguageCode;
   leadCapture: LeadCapture | null;
-};
-
-type HistoryItem = StoredReport & {
-  id: string;
   createdAt: string;
 };
 
+type HistoryItem = StoredReport;
+
 export function AnalyzerShell() {
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<CvAnalysisResult | null>(null);
+  const [pendingAnalysisId, setPendingAnalysisId] = useState<string | null>(null);
   const [pendingAnalysis, setPendingAnalysis] = useState<CvAnalysisResult | null>(null);
   const [detectedLanguage, setDetectedLanguage] = useState<LanguageCode | null>(null);
   const [pendingLanguage, setPendingLanguage] = useState<LanguageCode | null>(null);
   const [leadCapture, setLeadCapture] = useState<LeadCapture | null>(null);
   const [isFullReportUnlocked, setIsFullReportUnlocked] = useState(false);
+  const [isRestoringPayment, setIsRestoringPayment] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -40,16 +41,19 @@ export function AnalyzerShell() {
       return;
     }
 
-    const storedReport = readStoredReport();
+    setIsRestoringPayment(true);
+    const requestedAnalysisId = params.get("analysisId");
+    const storedReport = readStoredReport(requestedAnalysisId) ?? readLatestStoredReport();
     if (!storedReport) {
-      setError("Payment was completed, but the report could not be restored in this browser session.");
       return;
     }
 
+    setAnalysisId(storedReport.id);
     setAnalysis(storedReport.analysis);
     setDetectedLanguage(storedReport.detectedLanguage);
     setLeadCapture(storedReport.leadCapture);
     setIsFullReportUnlocked(true);
+    setIsRestoringPayment(false);
     window.history.replaceState(null, "", "/analyzer");
   }, []);
 
@@ -73,6 +77,7 @@ export function AnalyzerShell() {
         throw new Error(data.error || "We could not complete the analysis. Please check the CV and try again.");
       }
 
+      setPendingAnalysisId(data.analysisId ?? crypto.randomUUID());
       setPendingAnalysis(data.analysis);
       setPendingLanguage(data.detectedLanguage ?? "en");
     } catch (caughtError) {
@@ -88,34 +93,40 @@ export function AnalyzerShell() {
 
   function handleLeadCapture(values: LeadCapture) {
     setLeadCapture(values);
+    setAnalysisId(pendingAnalysisId);
     setAnalysis(pendingAnalysis);
     setDetectedLanguage(pendingLanguage);
-    if (pendingAnalysis && pendingLanguage) {
+    if (pendingAnalysisId && pendingAnalysis && pendingLanguage) {
       const report = {
-        id: crypto.randomUUID(),
+        id: pendingAnalysisId,
         analysis: pendingAnalysis,
         detectedLanguage: pendingLanguage,
-        leadCapture: values
+        leadCapture: values,
+        createdAt: new Date().toISOString()
       };
       storeReport(report);
       setHistory(saveHistory(report));
     }
+    setPendingAnalysisId(null);
     setPendingAnalysis(null);
     setPendingLanguage(null);
   }
 
   function reset() {
+    setAnalysisId(null);
     setAnalysis(null);
+    setPendingAnalysisId(null);
     setPendingAnalysis(null);
     setDetectedLanguage(null);
     setPendingLanguage(null);
     setLeadCapture(null);
     setIsFullReportUnlocked(false);
+    setIsRestoringPayment(false);
     setError("");
-    window.sessionStorage.removeItem(storedReportKey);
   }
 
   function reopenHistory(item: HistoryItem) {
+    setAnalysisId(item.id);
     setAnalysis(item.analysis);
     setDetectedLanguage(item.detectedLanguage);
     setLeadCapture(item.leadCapture);
@@ -138,11 +149,15 @@ export function AnalyzerShell() {
         </p>
       </div>
 
-      {analysis ? (
+      {isRestoringPayment && !analysis ? (
+        <RestorePaymentState onReset={reset} />
+      ) : analysis ? (
         <AnalysisResults
+          analysisId={analysisId}
           analysis={analysis}
           detectedLanguage={detectedLanguage ?? "en"}
           isFullReportUnlocked={isFullReportUnlocked}
+          isPaymentSuccess={isFullReportUnlocked}
           leadCapture={leadCapture}
           onReset={reset}
         />
@@ -159,12 +174,17 @@ export function AnalyzerShell() {
 }
 
 function storeReport(report: StoredReport) {
-  window.sessionStorage.setItem(storedReportKey, JSON.stringify(report));
+  window.localStorage.setItem(getAnalysisStorageKey(report.id), JSON.stringify(report));
+  window.localStorage.setItem(latestAnalysisIdKey, report.id);
 }
 
-function readStoredReport(): StoredReport | null {
+function readStoredReport(analysisId?: string | null): StoredReport | null {
   try {
-    const raw = window.sessionStorage.getItem(storedReportKey);
+    if (!analysisId) {
+      return null;
+    }
+
+    const raw = window.localStorage.getItem(getAnalysisStorageKey(analysisId));
     if (!raw) {
       return null;
     }
@@ -180,13 +200,24 @@ function readStoredReport(): StoredReport | null {
   }
 }
 
+function readLatestStoredReport(): StoredReport | null {
+  const latestId = window.localStorage.getItem(latestAnalysisIdKey);
+  if (latestId) {
+    const latestReport = readStoredReport(latestId);
+    if (latestReport) {
+      return latestReport;
+    }
+  }
+
+  return readHistory()[0] ?? null;
+}
+
+function getAnalysisStorageKey(analysisId: string) {
+  return `analysis_${analysisId}`;
+}
+
 function saveHistory(report: StoredReport): HistoryItem[] {
-  const nextItem: HistoryItem = {
-    ...report,
-    id: report.id ?? crypto.randomUUID(),
-    createdAt: new Date().toISOString()
-  };
-  const nextHistory = [nextItem, ...readHistory()].slice(0, 3);
+  const nextHistory = [report, ...readHistory().filter((item) => item.id !== report.id)].slice(0, 3);
   window.localStorage.setItem(storedHistoryKey, JSON.stringify(nextHistory));
   return nextHistory;
 }
@@ -203,6 +234,23 @@ function readHistory(): HistoryItem[] {
   } catch {
     return [];
   }
+}
+
+function RestorePaymentState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="glass-card mx-auto max-w-2xl rounded-3xl p-8 text-center">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-[0_0_48px_rgba(139,92,246,0.45)]">
+        <span className="h-7 w-7 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+      </div>
+      <h2 className="mt-6 text-3xl font-bold text-white">We are restoring your session, please wait...</h2>
+      <p className="mx-auto mt-3 max-w-md leading-7 text-slate-400">
+        Restoring your report after Stripe checkout. Keep this tab open while we recover your analysis.
+      </p>
+      <button type="button" className="mt-6 text-sm font-semibold text-cyan-200 hover:text-cyan-100" onClick={onReset}>
+        Analyze another CV
+      </button>
+    </div>
+  );
 }
 
 function HistorySection({ history, onOpen }: { history: HistoryItem[]; onOpen: (item: HistoryItem) => void }) {

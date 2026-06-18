@@ -12,8 +12,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const payload = await readCheckoutPayload(request);
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const origin = new URL(request.url).origin;
+    const origin = getCheckoutOrigin(request.url);
+    const successUrl = new URL("/analyzer", origin);
+    successUrl.searchParams.set("success", "true");
+    if (payload.analysisId) {
+      successUrl.searchParams.set("analysisId", payload.analysisId);
+    }
+
     const lineItem = process.env.STRIPE_PRICE_ID
       ? {
           price: process.env.STRIPE_PRICE_ID,
@@ -33,8 +40,9 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [lineItem],
-      success_url: `${origin}/analyzer?success=true`,
-      cancel_url: `${origin}/analyzer`
+      metadata: payload.analysisId ? { analysisId: payload.analysisId } : undefined,
+      success_url: successUrl.toString(),
+      cancel_url: `${origin}/`
     });
 
     if (!session.url) {
@@ -46,4 +54,28 @@ export async function POST(request: Request) {
     console.error("Stripe checkout error", error);
     return NextResponse.json({ error: "Stripe checkout could not be started." }, { status: 500 });
   }
+}
+
+async function readCheckoutPayload(request: Request): Promise<{ analysisId?: string }> {
+  try {
+    const body = (await request.json()) as { analysisId?: unknown };
+    return typeof body.analysisId === "string" && body.analysisId.trim()
+      ? { analysisId: body.analysisId.trim() }
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function getCheckoutOrigin(requestUrl: string) {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
+
+  const url = new URL(requestUrl);
+  if (url.hostname === "0.0.0.0") {
+    url.hostname = "localhost";
+  }
+
+  return url.origin;
 }

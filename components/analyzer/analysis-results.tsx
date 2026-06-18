@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Globe2, Loader2, Lock, RotateCcw, ShieldCheck, Sparkles, TrendingUp, Zap } from "lucide-react";
+import { CheckCircle2, Download, Globe2, Loader2, Lock, RotateCcw, ShieldCheck, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CvAnalysisResult, LanguageCode, LeadCapture } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type AnalysisResultsProps = {
+  analysisId: string | null;
   analysis: CvAnalysisResult;
   detectedLanguage: LanguageCode;
   isFullReportUnlocked: boolean;
+  isPaymentSuccess: boolean;
   leadCapture: LeadCapture | null;
   onReset: () => void;
 };
@@ -21,9 +23,11 @@ const premiumPlaceholders = [
 ];
 
 export function AnalysisResults({
+  analysisId,
   analysis,
   detectedLanguage,
   isFullReportUnlocked,
+  isPaymentSuccess,
   leadCapture,
   onReset
 }: AnalysisResultsProps) {
@@ -38,7 +42,11 @@ export function AnalysisResults({
 
     try {
       const response = await fetch("/api/stripe/create-checkout", {
-        method: "POST"
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ analysisId })
       });
       const data = (await response.json()) as { url?: string; error?: string };
 
@@ -89,9 +97,7 @@ export function AnalysisResults({
 
       {isFullReportUnlocked ? (
         <>
-          <div className="glass-card rounded-2xl border-emerald-400/20 p-5">
-            <p className="font-semibold text-emerald-300">Full report unlocked after Stripe checkout.</p>
-          </div>
+          <PaymentSuccessBanner analysis={analysis} isPaymentSuccess={isPaymentSuccess} />
           <FullReport analysis={analysis} />
         </>
       ) : (
@@ -166,8 +172,40 @@ function RiskBadge({ level }: { level: CvAnalysisResult["atsRiskLevel"] }) {
   );
 }
 
+function PaymentSuccessBanner({
+  analysis,
+  isPaymentSuccess
+}: {
+  analysis: CvAnalysisResult;
+  isPaymentSuccess: boolean;
+}) {
+  return (
+    <div className="glass-card rounded-3xl border-emerald-400/20 p-5 md:flex md:items-center md:justify-between md:gap-5">
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-300 shadow-[0_0_36px_rgba(34,197,94,0.18)]">
+          <CheckCircle2 size={25} aria-hidden="true" />
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold text-white">
+            {isPaymentSuccess ? <>Payment successful {"\u{1F389}"}</> : "Full report unlocked"}
+          </h3>
+          <p className="mt-1 text-slate-400">Your CV report is ready. The full AI analysis is unlocked below.</p>
+        </div>
+      </div>
+      <Button
+        type="button"
+        className="mt-5 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_28px_rgba(99,102,241,0.26)] md:mt-0"
+        onClick={() => downloadAnalysisPdf(analysis)}
+      >
+        <Download size={17} aria-hidden="true" />
+        Download CV Report (PDF)
+      </Button>
+    </div>
+  );
+}
+
 function LanguageBadge({ language }: { language: LanguageCode }) {
-  const label = language === "it" ? "🇮🇹 Italian CV detected" : "🇬🇧 English CV detected";
+  const label = language === "it" ? "\u{1F1EE}\u{1F1F9} Italian CV detected" : "\u{1F1EC}\u{1F1E7} English CV detected";
 
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
@@ -417,4 +455,144 @@ function ListCardContent({
       )}
     </>
   );
+}
+
+function downloadAnalysisPdf(analysis: CvAnalysisResult) {
+  const lines = [
+    "CV Match Analyzer - Full AI Report",
+    "",
+    `ATS Match Score: ${analysis.overallMatchScore}/100`,
+    `ATS Risk Level: ${analysis.atsRiskLevel}`,
+    "",
+    "Summary",
+    analysis.shortSummary,
+    "",
+    "Strengths",
+    ...formatListForPdf(analysis.strengths),
+    "",
+    "Missing Keywords",
+    ...formatListForPdf(analysis.missingKeywords),
+    "",
+    "Matching Keywords",
+    ...formatListForPdf(analysis.matchingKeywords),
+    "",
+    "Weaknesses",
+    ...formatListForPdf(analysis.weaknesses),
+    "",
+    "Suggested CV Improvements",
+    ...formatListForPdf(analysis.suggestedCvImprovements),
+    "",
+    "AI Rewritten Professional Summary",
+    analysis.rewrittenProfessionalSummary,
+    "",
+    "Recommended Skills To Add",
+    ...formatListForPdf(analysis.recommendedSkillsToAdd),
+    "",
+    "Final Recommendation",
+    analysis.finalRecommendation
+  ];
+
+  const pdf = buildSimplePdf(lines);
+  const blob = new Blob([pdf], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "cv-match-report.pdf";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function formatListForPdf(items: string[]) {
+  return items.length ? items.map((item) => `- ${item}`) : ["- No items returned"];
+}
+
+function buildSimplePdf(inputLines: string[]) {
+  const wrappedLines = inputLines.flatMap((line) => wrapPdfText(line, 88));
+  const pages: string[][] = [];
+  for (let index = 0; index < wrappedLines.length; index += 42) {
+    pages.push(wrappedLines.slice(index, index + 42));
+  }
+
+  const objects: string[] = [];
+  objects.push("<< /Type /Catalog /Pages 2 0 R >>");
+  objects.push(`<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 2} 0 R`).join(" ")}] /Count ${pages.length} >>`);
+
+  pages.forEach((pageLines, pageIndex) => {
+    const pageObjectNumber = 3 + pageIndex * 2;
+    const contentObjectNumber = pageObjectNumber + 1;
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${3 + pages.length * 2} 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`
+    );
+
+    const stream = [
+      "BT",
+      "/F1 11 Tf",
+      "50 750 Td",
+      "14 TL",
+      ...pageLines.map((line) => `(${escapePdfText(line)}) Tj T*`),
+      "ET"
+    ].join("\n");
+
+    objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+  });
+
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  offsets.slice(1).forEach((offset) => {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return pdf;
+}
+
+function wrapPdfText(text: string, maxLength: number) {
+  const sanitized = sanitizePdfText(text);
+  if (!sanitized) {
+    return [""];
+  }
+
+  const words = sanitized.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  words.forEach((word) => {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+    if (nextLine.length > maxLength) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = nextLine;
+    }
+  });
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+function sanitizePdfText(text: string) {
+  return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim();
+}
+
+function escapePdfText(text: string) {
+  return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }

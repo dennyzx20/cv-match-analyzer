@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const analysisId = crypto.randomUUID();
     const detectedLanguage = detectLanguage(cvText);
     const analysis = await analyzeCvMatch({
       cvText,
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       language: detectedLanguage
     });
 
-    return NextResponse.json({ analysis, detectedLanguage });
+    return NextResponse.json({ analysisId, analysis, detectedLanguage });
   } catch (error) {
     console.error("Analyze API error", error);
 

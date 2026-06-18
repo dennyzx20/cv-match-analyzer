@@ -21,6 +21,7 @@ export type LeadCapture = {
 };
 
 export type AnalyzeResponse = {
+  analysisId?: string;
   analysis?: CvAnalysisResult;
   detectedLanguage?: LanguageCode;
   error?: string;
