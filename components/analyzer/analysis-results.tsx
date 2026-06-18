@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Globe2, Loader2, Lock, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Globe2, Loader2, Lock, RotateCcw, ShieldCheck, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import type { CvAnalysisResult, LanguageCode, LeadCapture } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -55,63 +54,99 @@ export function AnalysisResults({
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-5 md:p-7">
-        <div className="grid gap-6 md:grid-cols-[220px_1fr] md:items-center">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <section className="glass-card relative overflow-hidden rounded-2xl p-5 md:p-7">
+        <div className="absolute right-5 top-5 z-10">
+          <LanguageBadge language={detectedLanguage} />
+        </div>
+        <div className="grid gap-8 pt-12 md:grid-cols-[260px_1fr] md:items-center md:pt-0">
           <ScoreRing score={analysis.overallMatchScore} />
           <div>
-            <div className="mb-3 flex flex-wrap items-center gap-3">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <RiskBadge level={analysis.atsRiskLevel} />
-              <span className="text-sm font-medium text-muted">ATS risk level</span>
-              <LanguageBadge language={detectedLanguage} />
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-slate-300">
+                <TrendingUp size={15} aria-hidden="true" />
+                ATS analytics preview
+              </span>
             </div>
-            <h2 className="text-2xl font-bold text-ink">Your CV match report</h2>
-            <p className="mt-3 leading-7 text-muted">{analysis.shortSummary}</p>
+            <h2 className="bg-gradient-to-b from-white to-slate-400 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+              Your free ATS preview is ready
+            </h2>
+            <p className="mt-4 max-w-3xl leading-7 text-slate-400">{analysis.shortSummary}</p>
             {leadCapture?.email ? (
-              <p className="mt-3 text-sm text-muted">
-                Email captured for this session: <span className="font-semibold text-ink">{leadCapture.email}</span>
+              <p className="mt-4 text-sm text-slate-500">
+                Email captured for this session: <span className="font-semibold text-slate-300">{leadCapture.email}</span>
               </p>
             ) : null}
           </div>
         </div>
-      </Card>
+      </section>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <ListCard title="Missing keywords preview" items={previewMissingKeywords} tone="red" />
-        <ListCard title="Strengths preview" items={previewStrengths} tone="green" />
+        <KeywordPills title="Missing keywords preview" items={previewMissingKeywords} />
+        <StrengthCards title="Strengths preview" items={previewStrengths} />
       </div>
 
       {isFullReportUnlocked ? (
         <>
-          <Card className="border-green-200 bg-green-50 p-5 md:p-6">
-            <p className="font-semibold text-signal-green">Full report unlocked after Stripe checkout.</p>
-          </Card>
+          <div className="glass-card rounded-2xl border-emerald-400/20 p-5">
+            <p className="font-semibold text-emerald-300">Full report unlocked after Stripe checkout.</p>
+          </div>
           <FullReport analysis={analysis} />
         </>
       ) : (
-        <>
-          <PaywallCard error={checkoutError} isLoading={isCheckoutLoading} onUnlock={handleUnlock} />
+        <div className="relative">
           <LockedReportPreview onUnlock={handleUnlock} />
-        </>
+          <PaywallCard error={checkoutError} isLoading={isCheckoutLoading} onUnlock={handleUnlock} />
+        </div>
       )}
 
-      <Button onClick={onReset} variant="secondary">
-        <RotateCcw size={17} aria-hidden="true" />
-        Analyze another CV
-      </Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button
+          onClick={onReset}
+          variant="secondary"
+          className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+        >
+          <RotateCcw size={17} aria-hidden="true" />
+          Re-run analysis with new CV
+        </Button>
+        <p className="text-sm font-semibold text-cyan-200">Improve your CV again -&gt;</p>
+      </div>
     </div>
   );
 }
 
 function ScoreRing({ score }: { score: number }) {
-  const background = `conic-gradient(#1769E0 ${score * 3.6}deg, #E3E8EF 0deg)`;
+  const [displayScore, setDisplayScore] = useState(0);
+  const color = score < 50 ? "#EF4444" : score < 75 ? "#FACC15" : "#22C55E";
+  const background = `conic-gradient(${color} ${displayScore * 3.6}deg, rgba(148,163,184,0.16) 0deg)`;
+
+  useEffect(() => {
+    const duration = 700;
+    const start = performance.now();
+    let frame = 0;
+
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      setDisplayScore(Math.round(score * progress));
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    }
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [score]);
 
   return (
-    <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full" style={{ background }}>
-      <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white">
-        <span className="text-4xl font-bold text-ink">{score}</span>
-        <span className="text-sm font-medium text-muted">out of 100</span>
+    <div className="mx-auto text-center">
+      <div className="flex h-52 w-52 items-center justify-center rounded-full shadow-[0_0_80px_rgba(99,102,241,0.22)]" style={{ background }}>
+        <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full border border-white/10 bg-[#0B0F1A]">
+          <span className="text-6xl font-bold text-white">{displayScore}</span>
+          <span className="text-sm font-medium text-slate-400">out of 100</span>
+        </div>
       </div>
+      <p className="mt-4 text-sm font-bold uppercase tracking-wide text-slate-400">ATS Match Score</p>
     </div>
   );
 }
@@ -120,25 +155,24 @@ function RiskBadge({ level }: { level: CvAnalysisResult["atsRiskLevel"] }) {
   return (
     <span
       className={cn(
-        "rounded-md px-3 py-1 text-sm font-semibold",
-        level === "Low" && "bg-green-50 text-signal-green",
-        level === "Medium" && "bg-amber-50 text-signal-amber",
-        level === "High" && "bg-red-50 text-signal-red"
+        "rounded-full border px-3 py-1 text-sm font-semibold",
+        level === "Low" && "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+        level === "Medium" && "border-yellow-300/20 bg-yellow-300/10 text-yellow-200",
+        level === "High" && "border-red-400/20 bg-red-400/10 text-red-300"
       )}
     >
-      {level}
+      Risk level: {level}
     </span>
   );
 }
 
 function LanguageBadge({ language }: { language: LanguageCode }) {
-  const label = language === "it" ? "Detected language: Italiano" : "Detected language: English";
-  const flag = language === "it" ? "IT" : "UK";
+  const label = language === "it" ? "🇮🇹 Italian CV detected" : "🇬🇧 English CV detected";
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-md bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-700">
+    <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
       <Globe2 size={15} aria-hidden="true" />
-      {label} ({flag})
+      {label}
     </span>
   );
 }
@@ -153,38 +187,44 @@ function PaywallCard({
   onUnlock: () => void;
 }) {
   return (
-    <Card className="overflow-hidden border-brand-100">
-      <div className="grid gap-5 bg-white p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7">
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600">
-            <Lock size={21} aria-hidden="true" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">Unlock full report</p>
-            <h3 className="mt-2 text-2xl font-bold text-ink">Get the complete ATS report</h3>
-            <p className="mt-2 max-w-2xl leading-7 text-muted">
-              Get the complete ATS report, rewritten professional summary, missing keywords, and personalized CV
-              improvements.
-            </p>
-          </div>
+    <div className="absolute inset-0 z-10 flex items-center justify-center p-5">
+      <div className="glass-card w-full max-w-xl rounded-3xl border-indigo-300/20 p-6 text-center shadow-[0_30px_120px_rgba(99,102,241,0.32)] md:p-8">
+        <div className="mx-auto flex h-16 w-16 animate-pulse items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-[0_0_48px_rgba(139,92,246,0.45)]">
+          <Lock size={28} aria-hidden="true" />
         </div>
-        <div className="rounded-lg border border-line bg-surface p-4 md:min-w-56">
-          <p className="text-sm font-medium text-muted">One-time payment</p>
-          <p className="mt-1 text-4xl font-bold text-ink">{"\u20ac"}19</p>
-          <Button onClick={onUnlock} className="mt-4 w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 size={17} className="animate-spin" aria-hidden="true" />
-                Opening checkout
-              </>
-            ) : (
-              "Unlock full report for \u20ac19"
-            )}
-          </Button>
-          {error ? <p className="mt-3 text-sm leading-6 text-signal-red">{error}</p> : null}
+        <h3 className="mt-6 text-3xl font-bold text-white">Unlock Full AI Report</h3>
+        <p className="mx-auto mt-3 max-w-md leading-7 text-slate-400">
+          Get complete ATS breakdown, keyword gaps and CV optimization strategy.
+        </p>
+        <p className="mt-6 text-4xl font-bold text-white">{"\u20ac"}19</p>
+        <p className="mt-1 text-sm font-medium text-slate-400">one-time payment</p>
+        <Button
+          onClick={onUnlock}
+          className="animate-gradient mt-6 h-13 w-full rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-violet-500 px-7 text-base shadow-[0_0_36px_rgba(99,102,241,0.35)] transition hover:scale-[1.02]"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+              Opening checkout
+            </>
+          ) : (
+            "Unlock now"
+          )}
+        </Button>
+        <div className="mt-5 flex flex-wrap justify-center gap-3 text-sm font-medium text-slate-400">
+          <span className="inline-flex items-center gap-2">
+            <ShieldCheck size={15} className="text-emerald-300" aria-hidden="true" />
+            Secure payment powered by Stripe
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Zap size={15} className="text-cyan-300" aria-hidden="true" />
+            Instant access after payment
+          </span>
         </div>
+        {error ? <p className="mt-4 text-sm leading-6 text-red-300">{error}</p> : null}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -198,16 +238,15 @@ function LockedReportPreview({ onUnlock }: { onUnlock: () => void }) {
   ];
 
   return (
-    <div>
+    <div className="pointer-events-none blur-sm">
       <div className="grid gap-5 lg:grid-cols-2">
         {lockedSections.map((section) => (
           <LockedListCard key={section.title} {...section} onUnlock={onUnlock} />
         ))}
       </div>
-
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <LockedTextCard title="AI rewritten professional summary" onUnlock={onUnlock} />
-        <LockedTextCard title="Final recommendation" onUnlock={onUnlock} />
+        <LockedTextCard title="AI Recommendations" />
+        <LockedTextCard title="Final optimization strategy" />
       </div>
     </div>
   );
@@ -215,50 +254,29 @@ function LockedReportPreview({ onUnlock }: { onUnlock: () => void }) {
 
 function LockedListCard({
   title,
-  tone,
-  onUnlock
+  tone
 }: {
   title: string;
   tone: "blue" | "green" | "amber" | "red";
   onUnlock: () => void;
 }) {
   return (
-    <Card className="relative min-h-52 overflow-hidden p-5 md:p-6">
-      <div className="pointer-events-none blur-[3px]">
-        <ListCardContent title={title} items={premiumPlaceholders} tone={tone} />
-      </div>
-      <LockedOverlay onUnlock={onUnlock} />
-    </Card>
+    <DashboardCard>
+      <ListCardContent title={title} items={premiumPlaceholders} tone={tone} />
+    </DashboardCard>
   );
 }
 
-function LockedTextCard({ title, onUnlock }: { title: string; onUnlock: () => void }) {
+function LockedTextCard({ title }: { title: string }) {
   return (
-    <Card className="relative min-h-48 overflow-hidden p-5 md:p-6">
-      <div className="pointer-events-none blur-[3px]">
-        <h3 className="text-lg font-semibold text-ink">{title}</h3>
-        <p className="mt-3 leading-7 text-muted">
-          Unlock the full report to view this personalized section and apply the role-specific recommendations.
-        </p>
+    <DashboardCard>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <div className="mt-4 space-y-3">
+        <div className="shimmer h-4 rounded-full bg-white/10" />
+        <div className="shimmer h-4 w-4/5 rounded-full bg-white/10" />
+        <div className="shimmer h-4 w-2/3 rounded-full bg-white/10" />
       </div>
-      <LockedOverlay onUnlock={onUnlock} />
-    </Card>
-  );
-}
-
-function LockedOverlay({ onUnlock }: { onUnlock: () => void }) {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-white/80 p-5 text-center backdrop-blur-sm">
-      <div>
-        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-md bg-brand-600 text-white">
-          <Lock size={20} aria-hidden="true" />
-        </div>
-        <p className="mt-3 font-semibold text-ink">Full report locked</p>
-        <button type="button" className="mt-2 text-sm font-semibold text-brand-600 hover:text-brand-700" onClick={onUnlock}>
-          Unlock for {"\u20ac"}19
-        </button>
-      </div>
-    </div>
+    </DashboardCard>
   );
 }
 
@@ -266,25 +284,22 @@ function FullReport({ analysis }: { analysis: CvAnalysisResult }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-2">
-        <ListCard title="All missing keywords" items={analysis.missingKeywords} tone="red" />
+        <KeywordPills title="All missing keywords" items={analysis.missingKeywords} />
         <ListCard title="Matching keywords" items={analysis.matchingKeywords} tone="green" />
         <ListCard title="Weaknesses" items={analysis.weaknesses} tone="amber" />
-        <ListCard title="Suggested CV improvements" items={analysis.suggestedCvImprovements} tone="blue" />
+        <RecommendationBlocks title="AI Recommendations" items={analysis.suggestedCvImprovements} />
         <ListCard title="Recommended skills to add" items={analysis.recommendedSkillsToAdd} tone="blue" />
       </div>
-
       <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card className="p-5 md:p-6">
-          <h3 className="text-lg font-semibold text-ink">AI rewritten professional summary</h3>
-          <p className="mt-3 leading-7 text-muted">{analysis.rewrittenProfessionalSummary}</p>
-        </Card>
-        <Card className="p-5 md:p-6">
-          <h3 className="text-lg font-semibold text-ink">Final recommendation</h3>
-          <p className="mt-3 leading-7 text-muted">{analysis.finalRecommendation}</p>
-        </Card>
+        <NotionBlock title="AI rewritten professional summary" text={analysis.rewrittenProfessionalSummary} />
+        <NotionBlock title="Final optimization strategy" text={analysis.finalRecommendation} />
       </div>
     </div>
   );
+}
+
+function DashboardCard({ children }: { children: React.ReactNode }) {
+  return <div className="glass-card rounded-2xl p-5 transition duration-300 hover:scale-[1.02] md:p-6">{children}</div>;
 }
 
 function ListCard({
@@ -297,9 +312,71 @@ function ListCard({
   tone: "blue" | "green" | "amber" | "red";
 }) {
   return (
-    <Card className="p-5 md:p-6">
+    <DashboardCard>
       <ListCardContent title={title} items={items} tone={tone} />
-    </Card>
+    </DashboardCard>
+  );
+}
+
+function KeywordPills({ title, items }: { title: string; items: string[] }) {
+  return (
+    <DashboardCard>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      {items.length ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {items.map((item) => (
+            <span key={item} className="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-sm font-semibold text-red-200">
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-slate-400">No missing keywords returned.</p>
+      )}
+    </DashboardCard>
+  );
+}
+
+function StrengthCards({ title, items }: { title: string; items: string[] }) {
+  return (
+    <DashboardCard>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <div className="mt-4 grid gap-3">
+        {items.map((item) => (
+          <div key={item} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm leading-6 text-slate-300">
+            <CheckCircle2 size={16} className="mr-2 inline text-emerald-300" aria-hidden="true" />
+            {item}
+          </div>
+        ))}
+      </div>
+    </DashboardCard>
+  );
+}
+
+function RecommendationBlocks({ title, items }: { title: string; items: string[] }) {
+  return (
+    <DashboardCard>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <div className="mt-4 space-y-3">
+        {items.map((item) => (
+          <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-300">
+            <Sparkles size={16} className="mr-2 inline text-cyan-300" aria-hidden="true" />
+            {item}
+          </div>
+        ))}
+      </div>
+    </DashboardCard>
+  );
+}
+
+function NotionBlock({ title, text }: { title: string; text: string }) {
+  return (
+    <DashboardCard>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 leading-7 text-slate-300">
+        {text}
+      </div>
+    </DashboardCard>
   );
 }
 
@@ -314,20 +391,20 @@ function ListCardContent({
 }) {
   return (
     <>
-      <h3 className="text-lg font-semibold text-ink">{title}</h3>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
       {items.length ? (
         <ul className="mt-4 space-y-3">
           {items.map((item) => (
-            <li key={item} className="flex gap-3 text-sm leading-6 text-muted">
+            <li key={item} className="flex gap-3 text-sm leading-6 text-slate-300">
               {tone === "green" ? (
-                <CheckCircle2 size={16} className="mt-1 shrink-0 text-signal-green" aria-hidden="true" />
+                <CheckCircle2 size={16} className="mt-1 shrink-0 text-emerald-300" aria-hidden="true" />
               ) : (
                 <span
                   className={cn(
                     "mt-2 h-2 w-2 shrink-0 rounded-full",
-                    tone === "blue" && "bg-brand-600",
-                    tone === "amber" && "bg-signal-amber",
-                    tone === "red" && "bg-signal-red"
+                    tone === "blue" && "bg-cyan-300",
+                    tone === "amber" && "bg-yellow-300",
+                    tone === "red" && "bg-red-300"
                   )}
                 />
               )}
@@ -336,7 +413,7 @@ function ListCardContent({
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-muted">No items returned for this section.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-400">No items returned for this section.</p>
       )}
     </>
   );
