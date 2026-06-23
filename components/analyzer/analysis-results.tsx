@@ -458,41 +458,7 @@ function ListCardContent({
 }
 
 function downloadAnalysisPdf(analysis: CvAnalysisResult) {
-  const lines = [
-    "CV Match Analyzer - Full AI Report",
-    "",
-    `ATS Match Score: ${analysis.overallMatchScore}/100`,
-    `ATS Risk Level: ${analysis.atsRiskLevel}`,
-    "",
-    "Summary",
-    analysis.shortSummary,
-    "",
-    "Strengths",
-    ...formatListForPdf(analysis.strengths),
-    "",
-    "Missing Keywords",
-    ...formatListForPdf(analysis.missingKeywords),
-    "",
-    "Matching Keywords",
-    ...formatListForPdf(analysis.matchingKeywords),
-    "",
-    "Weaknesses",
-    ...formatListForPdf(analysis.weaknesses),
-    "",
-    "Suggested CV Improvements",
-    ...formatListForPdf(analysis.suggestedCvImprovements),
-    "",
-    "AI Rewritten Professional Summary",
-    analysis.rewrittenProfessionalSummary,
-    "",
-    "Recommended Skills To Add",
-    ...formatListForPdf(analysis.recommendedSkillsToAdd),
-    "",
-    "Final Recommendation",
-    analysis.finalRecommendation
-  ];
-
-  const pdf = buildSimplePdf(lines);
+  const pdf = buildPremiumPdfReport(analysis);
   const blob = new Blob([pdf], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -504,41 +470,248 @@ function downloadAnalysisPdf(analysis: CvAnalysisResult) {
   URL.revokeObjectURL(url);
 }
 
-function formatListForPdf(items: string[]) {
-  return items.length ? items.map((item) => `- ${item}`) : ["- No items returned"];
+type PdfColor = [number, number, number];
+type PdfPage = string[];
+
+const pdfColors = {
+  ink: [15, 23, 42] as PdfColor,
+  muted: [71, 85, 105] as PdfColor,
+  line: [226, 232, 240] as PdfColor,
+  soft: [248, 250, 252] as PdfColor,
+  blue: [37, 99, 235] as PdfColor,
+  purple: [124, 58, 237] as PdfColor,
+  cyan: [8, 145, 178] as PdfColor,
+  green: [22, 163, 74] as PdfColor,
+  yellow: [202, 138, 4] as PdfColor,
+  red: [220, 38, 38] as PdfColor,
+  white: [255, 255, 255] as PdfColor
+};
+
+function buildPremiumPdfReport(analysis: CvAnalysisResult) {
+  const renderer = createPdfRenderer();
+  const scoreColor = getScorePdfColor(analysis.overallMatchScore);
+  const riskColor = getRiskPdfColor(analysis.atsRiskLevel);
+
+  renderer.header(analysis, scoreColor, riskColor);
+  renderer.sectionTitle("AI Summary", "Short recruiter-style insight");
+  renderer.paragraph(analysis.shortSummary, 10.5, pdfColors.muted);
+  renderer.scoreSection(analysis, scoreColor, riskColor);
+  renderer.twoColumnLists("Strengths", analysis.strengths, pdfColors.green, "Weaknesses", analysis.weaknesses, pdfColors.red);
+  renderer.pillsSection("Missing Keywords", analysis.missingKeywords, pdfColors.red);
+  renderer.pillsSection("Matching Keywords", analysis.matchingKeywords, pdfColors.green);
+  renderer.listSection("CV Improvements", analysis.suggestedCvImprovements, pdfColors.blue, "ACTION");
+  renderer.sectionTitle("AI Rewritten Professional Summary", "Ready-to-use positioning");
+  renderer.callout(analysis.rewrittenProfessionalSummary, pdfColors.blue);
+  renderer.pillsSection("Recommended Skills To Add", analysis.recommendedSkillsToAdd, pdfColors.purple);
+  renderer.sectionTitle("Final Recommendation", "Recruiter-ready next step");
+  renderer.callout(analysis.finalRecommendation, pdfColors.cyan);
+  renderer.footer();
+
+  return renderer.toPdf();
 }
 
-function buildSimplePdf(inputLines: string[]) {
-  const wrappedLines = inputLines.flatMap((line) => wrapPdfText(line, 88));
-  const pages: string[][] = [];
-  for (let index = 0; index < wrappedLines.length; index += 42) {
-    pages.push(wrappedLines.slice(index, index + 42));
+function createPdfRenderer() {
+  const pages: PdfPage[] = [[]];
+  let page = pages[0];
+  let y = 742;
+
+  function ensureSpace(required: number) {
+    if (y - required < 54) {
+      page = [];
+      pages.push(page);
+      y = 742;
+      drawPageChrome();
+    }
   }
 
+  function drawPageChrome() {
+    rect(0, 0, 612, 792, pdfColors.white, true);
+    rect(34, 34, 544, 724, [255, 255, 255], true, pdfColors.line);
+  }
+
+  function rect(x: number, rectY: number, width: number, height: number, fill: PdfColor, shouldFill = true, stroke?: PdfColor) {
+    if (shouldFill) {
+      page.push(`${rgb(fill)} rg ${x} ${rectY} ${width} ${height} re f`);
+    }
+    if (stroke) {
+      page.push(`${rgb(stroke)} RG ${x} ${rectY} ${width} ${height} re S`);
+    }
+  }
+
+  function text(value: string, x: number, textY: number, size = 10, color = pdfColors.ink, font: "regular" | "bold" = "regular") {
+    page.push(`BT ${rgb(color)} rg /${font === "bold" ? "F2" : "F1"} ${size} Tf ${x} ${textY} Td (${escapePdfText(sanitizePdfText(value))}) Tj ET`);
+  }
+
+  function line(x1: number, y1: number, x2: number, y2: number, color = pdfColors.line) {
+    page.push(`${rgb(color)} RG ${x1} ${y1} m ${x2} ${y2} l S`);
+  }
+
+  function paragraph(value: string, size = 10.5, color = pdfColors.muted, x = 58, maxLength = 92) {
+    const lines = wrapPdfText(value, maxLength);
+    ensureSpace(lines.length * 15 + 14);
+    lines.forEach((lineText) => {
+      text(lineText, x, y, size, color);
+      y -= 15;
+    });
+    y -= 8;
+  }
+
+  function sectionTitle(title: string, eyebrow?: string) {
+    ensureSpace(54);
+    y -= 8;
+    if (eyebrow) {
+      text(eyebrow.toUpperCase(), 58, y, 8, pdfColors.blue, "bold");
+      y -= 15;
+    }
+    text(title, 58, y, 17, pdfColors.ink, "bold");
+    y -= 13;
+    line(58, y, 554, y, pdfColors.line);
+    y -= 18;
+  }
+
+  function header(analysis: CvAnalysisResult, scoreColor: PdfColor, riskColor: PdfColor) {
+    drawPageChrome();
+    rect(34, 650, 544, 108, [239, 246, 255], true);
+    text("CV Match Analyzer", 58, 724, 22, pdfColors.ink, "bold");
+    text("Premium ATS + recruiter-style CV analysis", 58, 704, 10.5, pdfColors.muted);
+    text("ATS SCORE", 420, 724, 8, pdfColors.muted, "bold");
+    text(`${analysis.overallMatchScore}/100`, 420, 696, 30, scoreColor, "bold");
+    pill(`Risk: ${analysis.atsRiskLevel}`, 420, 662, riskColor, 96);
+    y = 620;
+  }
+
+  function pill(label: string, x: number, pillY: number, color: PdfColor, width?: number) {
+    const pillWidth = width ?? Math.max(62, sanitizePdfText(label).length * 5.2 + 18);
+    rect(x, pillY - 5, pillWidth, 18, [248, 250, 252], true, color);
+    text(label, x + 9, pillY, 8.5, color, "bold");
+    return pillWidth;
+  }
+
+  function scoreSection(analysis: CvAnalysisResult, scoreColor: PdfColor, riskColor: PdfColor) {
+    sectionTitle("Score Breakdown", "ATS match score");
+    ensureSpace(82);
+    text("Overall CV to job match", 58, y, 11, pdfColors.ink, "bold");
+    text(`${analysis.overallMatchScore}%`, 500, y, 13, scoreColor, "bold");
+    y -= 20;
+    rect(58, y, 496, 12, [226, 232, 240], true);
+    rect(58, y, Math.max(8, 496 * (analysis.overallMatchScore / 100)), 12, scoreColor, true);
+    y -= 28;
+    text("ATS Risk Level", 58, y, 11, pdfColors.ink, "bold");
+    pill(analysis.atsRiskLevel, 150, y, riskColor, 76);
+    y -= 30;
+  }
+
+  function twoColumnLists(leftTitle: string, leftItems: string[], leftColor: PdfColor, rightTitle: string, rightItems: string[], rightColor: PdfColor) {
+    sectionTitle("Recruiter Review", "Strengths and weaknesses");
+    const startY = y;
+    listBlock(leftTitle, leftItems, leftColor, 58, 238, false);
+    const leftEndY = y;
+    y = startY;
+    listBlock(rightTitle, rightItems, rightColor, 316, 238, false);
+    y = Math.min(leftEndY, y) - 4;
+  }
+
+  function listBlock(title: string, items: string[], color: PdfColor, x: number, maxWidth: number, reserveSpace = true) {
+    if (reserveSpace) {
+      ensureSpace(60 + items.length * 28);
+    }
+    rect(x, y - 8, maxWidth, 24, [248, 250, 252], true, pdfColors.line);
+    text(title, x + 12, y, 11, color, "bold");
+    y -= 30;
+    const safeItems = items.length ? items : ["No items returned"];
+    safeItems.forEach((item) => {
+      const lines = wrapPdfText(item, Math.floor(maxWidth / 5.4));
+      text("OK", x + 2, y, 8, color, "bold");
+      lines.forEach((lineText, lineIndex) => {
+        text(lineText, x + 24, y - lineIndex * 13, 9.2, pdfColors.muted);
+      });
+      y -= Math.max(20, lines.length * 13 + 6);
+    });
+  }
+
+  function listSection(title: string, items: string[], color: PdfColor, icon: string) {
+    sectionTitle(title, "Actionable recommendations");
+    const safeItems = items.length ? items : ["No items returned"];
+    safeItems.forEach((item) => {
+      ensureSpace(44);
+      const lines = wrapPdfText(item, 84);
+      rect(58, y - lines.length * 13 - 10, 496, lines.length * 13 + 22, [248, 250, 252], true, pdfColors.line);
+      text(icon, 72, y, 8, color, "bold");
+      lines.forEach((lineText, index) => text(lineText, 112, y - index * 13, 9.4, pdfColors.muted));
+      y -= lines.length * 13 + 28;
+    });
+  }
+
+  function pillsSection(title: string, items: string[], color: PdfColor) {
+    sectionTitle(title, "Keyword analysis");
+    const safeItems = items.length ? items : ["No keywords returned"];
+    let x = 58;
+    safeItems.forEach((item) => {
+      const label = sanitizePdfText(item).slice(0, 38);
+      const width = Math.max(58, label.length * 5.1 + 18);
+      if (x + width > 554) {
+        x = 58;
+        y -= 28;
+      }
+      ensureSpace(32);
+      pill(label, x, y, color, width);
+      x += width + 8;
+    });
+    y -= 36;
+  }
+
+  function callout(value: string, color: PdfColor) {
+    const lines = wrapPdfText(value, 86);
+    ensureSpace(lines.length * 15 + 34);
+    rect(58, y - lines.length * 15 - 12, 496, lines.length * 15 + 28, [248, 250, 252], true, pdfColors.line);
+    rect(58, y - lines.length * 15 - 12, 4, lines.length * 15 + 28, color, true);
+    lines.forEach((lineText, index) => text(lineText, 76, y - index * 15, 10, pdfColors.muted));
+    y -= lines.length * 15 + 34;
+  }
+
+  function footer() {
+    pages.forEach((pdfPage, index) => {
+      pdfPage.push(`BT ${rgb(pdfColors.muted)} rg /F1 8 Tf 58 24 Td (${escapePdfText(`CV Match Analyzer - Page ${index + 1}`)}) Tj ET`);
+    });
+  }
+
+  function toPdf() {
+    return serializePdf(pages);
+  }
+
+  return {
+    callout,
+    footer,
+    header,
+    listSection,
+    paragraph,
+    pillsSection,
+    scoreSection,
+    sectionTitle,
+    toPdf,
+    twoColumnLists
+  };
+}
+
+function serializePdf(pages: PdfPage[]) {
+  const fontObjectNumber = 3 + pages.length * 2;
+  const boldFontObjectNumber = fontObjectNumber + 1;
   const objects: string[] = [];
   objects.push("<< /Type /Catalog /Pages 2 0 R >>");
   objects.push(`<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 2} 0 R`).join(" ")}] /Count ${pages.length} >>`);
 
-  pages.forEach((pageLines, pageIndex) => {
+  pages.forEach((page, pageIndex) => {
     const pageObjectNumber = 3 + pageIndex * 2;
     const contentObjectNumber = pageObjectNumber + 1;
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${3 + pages.length * 2} 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontObjectNumber} 0 R /F2 ${boldFontObjectNumber} 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`
     );
-
-    const stream = [
-      "BT",
-      "/F1 11 Tf",
-      "50 750 Td",
-      "14 TL",
-      ...pageLines.map((line) => `(${escapePdfText(line)}) Tj T*`),
-      "ET"
-    ].join("\n");
-
+    const stream = page.join("\n");
     objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
   });
 
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
 
   let pdf = "%PDF-1.4\n";
   const offsets = [0];
@@ -556,6 +729,34 @@ function buildSimplePdf(inputLines: string[]) {
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
 
   return pdf;
+}
+
+function getScorePdfColor(score: number): PdfColor {
+  if (score < 50) {
+    return pdfColors.red;
+  }
+
+  if (score < 75) {
+    return pdfColors.yellow;
+  }
+
+  return pdfColors.green;
+}
+
+function getRiskPdfColor(level: CvAnalysisResult["atsRiskLevel"]): PdfColor {
+  if (level === "Low") {
+    return pdfColors.green;
+  }
+
+  if (level === "High") {
+    return pdfColors.red;
+  }
+
+  return pdfColors.yellow;
+}
+
+function rgb(color: PdfColor) {
+  return color.map((value) => (value / 255).toFixed(3)).join(" ");
 }
 
 function wrapPdfText(text: string, maxLength: number) {
