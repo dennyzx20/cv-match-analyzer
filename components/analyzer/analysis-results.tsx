@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Download, Globe2, Loader2, Lock, RotateCcw, ShieldCheck, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CvAnalysisResult, LanguageCode, LeadCapture } from "@/lib/types";
@@ -13,6 +13,7 @@ type AnalysisResultsProps = {
   isFullReportUnlocked: boolean;
   isPaymentSuccess: boolean;
   leadCapture: LeadCapture | null;
+  purchasedPlan: "base" | "premium" | null;
   onReset: () => void;
 };
 
@@ -29,14 +30,15 @@ export function AnalysisResults({
   isFullReportUnlocked,
   isPaymentSuccess,
   leadCapture,
+  purchasedPlan,
   onReset
 }: AnalysisResultsProps) {
   const [checkoutError, setCheckoutError] = useState("");
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-  const previewMissingKeywords = analysis.missingKeywords.slice(0, 3);
-  const previewStrengths = analysis.strengths.slice(0, 3);
+  const previewMissingKeywords = useMemo(() => analysis.missingKeywords.slice(0, 3), [analysis.missingKeywords]);
+  const previewStrengths = useMemo(() => analysis.strengths.slice(0, 3), [analysis.strengths]);
 
-  async function handleUnlock() {
+  const handleUnlock = useCallback(async (plan: "base" | "premium") => {
     setCheckoutError("");
     setIsCheckoutLoading(true);
 
@@ -46,7 +48,7 @@ export function AnalysisResults({
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ analysisId })
+        body: JSON.stringify({ analysisId, plan })
       });
       const data = (await response.json()) as { url?: string; error?: string };
 
@@ -59,7 +61,7 @@ export function AnalysisResults({
       setCheckoutError(error instanceof Error ? error.message : "Stripe checkout could not be started.");
       setIsCheckoutLoading(false);
     }
-  }
+  }, [analysisId]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -97,12 +99,12 @@ export function AnalysisResults({
 
       {isFullReportUnlocked ? (
         <>
-          <PaymentSuccessBanner analysis={analysis} isPaymentSuccess={isPaymentSuccess} />
-          <FullReport analysis={analysis} />
+          <PaymentSuccessBanner analysis={analysis} isPaymentSuccess={isPaymentSuccess} purchasedPlan={purchasedPlan} />
+          {purchasedPlan === "base" ? <BaseReport analysis={analysis} /> : <FullReport analysis={analysis} />}
         </>
       ) : (
         <div className="relative">
-          <LockedReportPreview onUnlock={handleUnlock} />
+          <LockedReportPreview />
           <PaywallCard error={checkoutError} isLoading={isCheckoutLoading} onUnlock={handleUnlock} />
         </div>
       )}
@@ -174,11 +176,15 @@ function RiskBadge({ level }: { level: CvAnalysisResult["atsRiskLevel"] }) {
 
 function PaymentSuccessBanner({
   analysis,
-  isPaymentSuccess
+  isPaymentSuccess,
+  purchasedPlan
 }: {
   analysis: CvAnalysisResult;
   isPaymentSuccess: boolean;
+  purchasedPlan: "base" | "premium" | null;
 }) {
+  const hasPdfDownload = purchasedPlan !== "base";
+
   return (
     <div className="glass-card rounded-3xl border-emerald-400/20 p-5 md:flex md:items-center md:justify-between md:gap-5">
       <div className="flex items-start gap-4">
@@ -189,17 +195,25 @@ function PaymentSuccessBanner({
           <h3 className="text-2xl font-bold text-white">
             {isPaymentSuccess ? <>Payment successful {"\u{1F389}"}</> : "Full report unlocked"}
           </h3>
-          <p className="mt-1 text-slate-400">Your CV report is ready. The full AI analysis is unlocked below.</p>
+          <p className="mt-1 text-slate-400">
+            Your {purchasedPlan === "base" ? "Base" : "Premium"} CV report is ready. The selected report is unlocked below.
+          </p>
         </div>
       </div>
-      <Button
-        type="button"
-        className="mt-5 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_28px_rgba(99,102,241,0.26)] md:mt-0"
-        onClick={() => downloadAnalysisPdf(analysis)}
-      >
-        <Download size={17} aria-hidden="true" />
-        Download CV Report (PDF)
-      </Button>
+      {hasPdfDownload ? (
+        <Button
+          type="button"
+          className="mt-5 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_28px_rgba(99,102,241,0.26)] md:mt-0"
+          onClick={() => downloadAnalysisPdf(analysis)}
+        >
+          <Download size={17} aria-hidden="true" />
+          Download CV Report (PDF)
+        </Button>
+      ) : (
+        <p className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300 md:mt-0">
+          PDF export is included in Premium.
+        </p>
+      )}
     </div>
   );
 }
@@ -222,34 +236,37 @@ function PaywallCard({
 }: {
   error: string;
   isLoading: boolean;
-  onUnlock: () => void;
+  onUnlock: (plan: "base" | "premium") => void;
 }) {
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center p-5">
-      <div className="glass-card w-full max-w-xl rounded-3xl border-indigo-300/20 p-6 text-center shadow-[0_30px_120px_rgba(99,102,241,0.32)] md:p-8">
+      <div className="glass-card w-full max-w-4xl rounded-3xl border-indigo-300/20 p-6 text-center shadow-[0_30px_120px_rgba(99,102,241,0.32)] md:p-8">
         <div className="mx-auto flex h-16 w-16 animate-pulse items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-[0_0_48px_rgba(139,92,246,0.45)]">
           <Lock size={28} aria-hidden="true" />
         </div>
-        <h3 className="mt-6 text-3xl font-bold text-white">Unlock Full AI Report</h3>
+        <h3 className="mt-6 text-3xl font-bold text-white">Choose your AI report</h3>
         <p className="mx-auto mt-3 max-w-md leading-7 text-slate-400">
-          Get complete ATS breakdown, keyword gaps and CV optimization strategy.
+          Unlock complete ATS breakdown, keyword gaps and CV optimization strategy.
         </p>
-        <p className="mt-6 text-4xl font-bold text-white">{"\u20ac"}19</p>
-        <p className="mt-1 text-sm font-medium text-slate-400">one-time payment</p>
-        <Button
-          onClick={onUnlock}
-          className="animate-gradient mt-6 h-13 w-full rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-violet-500 px-7 text-base shadow-[0_0_36px_rgba(99,102,241,0.35)] transition hover:scale-[1.02]"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 size={18} className="animate-spin" aria-hidden="true" />
-              Opening checkout
-            </>
-          ) : (
-            "Unlock now"
-          )}
-        </Button>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <OfferCard
+            description="Compatibility analysis, match score, 3 strengths, 3 key weaknesses and concise CV improvement tips."
+            isLoading={isLoading}
+            name="Base"
+            price={"9,99\u20ac"}
+            cta="Unlock Base"
+            onClick={() => onUnlock("base")}
+          />
+          <OfferCard
+            description="Everything in Base plus full keyword analysis, deeper recommendations, rewritten CV sections and cover letter draft."
+            featured
+            isLoading={isLoading}
+            name="Premium"
+            price={"19,99\u20ac"}
+            cta="Unlock Premium"
+            onClick={() => onUnlock("premium")}
+          />
+        </div>
         <div className="mt-5 flex flex-wrap justify-center gap-3 text-sm font-medium text-slate-400">
           <span className="inline-flex items-center gap-2">
             <ShieldCheck size={15} className="text-emerald-300" aria-hidden="true" />
@@ -266,7 +283,52 @@ function PaywallCard({
   );
 }
 
-function LockedReportPreview({ onUnlock }: { onUnlock: () => void }) {
+function OfferCard({
+  cta,
+  description,
+  featured = false,
+  isLoading,
+  name,
+  onClick,
+  price
+}: {
+  cta: string;
+  description: string;
+  featured?: boolean;
+  isLoading: boolean;
+  name: string;
+  onClick: () => void;
+  price: string;
+}) {
+  return (
+    <div className={`rounded-2xl border p-5 text-left ${featured ? "border-indigo-300/30 bg-indigo-400/10" : "border-white/10 bg-white/5"}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-200">{name}</p>
+          <p className="mt-2 text-3xl font-bold text-white">{price}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
+        </div>
+        {featured ? <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-bold text-cyan-200">Best value</span> : null}
+      </div>
+      <Button
+        onClick={onClick}
+        className={`mt-5 h-12 w-full rounded-2xl ${featured ? "animate-gradient bg-gradient-to-r from-indigo-500 via-blue-500 to-violet-500 shadow-[0_0_36px_rgba(99,102,241,0.35)]" : "bg-white/10 text-white hover:bg-white/15"}`}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+            Opening checkout
+          </>
+        ) : (
+          cta
+        )}
+      </Button>
+    </div>
+  );
+}
+
+function LockedReportPreview() {
   const lockedSections = [
     { title: "All missing keywords", tone: "red" as const },
     { title: "Matching keywords", tone: "green" as const },
@@ -279,7 +341,7 @@ function LockedReportPreview({ onUnlock }: { onUnlock: () => void }) {
     <div className="pointer-events-none blur-sm">
       <div className="grid gap-5 lg:grid-cols-2">
         {lockedSections.map((section) => (
-          <LockedListCard key={section.title} {...section} onUnlock={onUnlock} />
+          <LockedListCard key={section.title} {...section} />
         ))}
       </div>
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
@@ -296,7 +358,6 @@ function LockedListCard({
 }: {
   title: string;
   tone: "blue" | "green" | "amber" | "red";
-  onUnlock: () => void;
 }) {
   return (
     <DashboardCard>
@@ -332,6 +393,30 @@ function FullReport({ analysis }: { analysis: CvAnalysisResult }) {
         <NotionBlock title="AI rewritten professional summary" text={analysis.rewrittenProfessionalSummary} />
         <NotionBlock title="Final optimization strategy" text={analysis.finalRecommendation} />
       </div>
+      <NotionBlock title="Personalized cover letter draft" text={buildCoverLetterDraft(analysis)} />
+    </div>
+  );
+}
+
+function BaseReport({ analysis }: { analysis: CvAnalysisResult }) {
+  const topStrengths = analysis.strengths.slice(0, 3);
+  const topWeaknesses = analysis.weaknesses.slice(0, 3);
+  const conciseImprovements = analysis.suggestedCvImprovements.slice(0, 3);
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <StrengthCards title="Top strengths" items={topStrengths} />
+        <ListCard title="Top CV weaknesses" items={topWeaknesses} tone="red" />
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <KeywordPills title="Priority missing keywords" items={analysis.missingKeywords.slice(0, 3)} />
+        <RecommendationBlocks title="Concise CV improvements" items={conciseImprovements} />
+      </div>
+      <NotionBlock
+        title="Base compatibility insight"
+        text="This Base report unlocks the essential CV/job fit diagnosis: your match score, strongest selling points, key gaps and concise next actions. Premium adds the complete keyword map, deeper recommendations, rewritten CV sections, PDF export and a cover letter draft."
+      />
     </div>
   );
 }
@@ -411,7 +496,7 @@ function NotionBlock({ title, text }: { title: string; text: string }) {
   return (
     <DashboardCard>
       <h3 className="text-lg font-semibold text-white">{title}</h3>
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 leading-7 text-slate-300">
+      <div className="mt-4 whitespace-pre-line rounded-2xl border border-white/10 bg-white/[0.04] p-4 leading-7 text-slate-300">
         {text}
       </div>
     </DashboardCard>
@@ -470,6 +555,21 @@ function downloadAnalysisPdf(analysis: CvAnalysisResult) {
   URL.revokeObjectURL(url);
 }
 
+function buildCoverLetterDraft(analysis: CvAnalysisResult) {
+  const strongestPoint = analysis.strengths[0] || "my background aligns with the role requirements";
+  const improvementFocus = analysis.missingKeywords[0] || "the core priorities of the role";
+
+  return [
+    "Dear Hiring Manager,",
+    "",
+    `I am excited to apply for this role because ${strongestPoint}. After reviewing the position requirements, I can see a strong fit between my experience and the outcomes your team is looking for.`,
+    "",
+    `My CV already shows relevant strengths, and I would emphasize ${improvementFocus} more clearly to make the application even more targeted. ${analysis.finalRecommendation}`,
+    "",
+    "Thank you for considering my application. I would welcome the opportunity to discuss how my experience can support your team."
+  ].join("\n");
+}
+
 type PdfColor = [number, number, number];
 type PdfPage = string[];
 
@@ -505,6 +605,8 @@ function buildPremiumPdfReport(analysis: CvAnalysisResult) {
   renderer.pillsSection("Recommended Skills To Add", analysis.recommendedSkillsToAdd, pdfColors.purple);
   renderer.sectionTitle("Final Recommendation", "Recruiter-ready next step");
   renderer.callout(analysis.finalRecommendation, pdfColors.cyan);
+  renderer.sectionTitle("Personalized Cover Letter Draft", "Premium application asset");
+  renderer.callout(buildCoverLetterDraft(analysis), pdfColors.purple);
   renderer.footer();
 
   return renderer.toPdf();

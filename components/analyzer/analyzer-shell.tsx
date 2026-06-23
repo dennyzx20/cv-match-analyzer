@@ -28,6 +28,7 @@ export function AnalyzerShell() {
   const [pendingLanguage, setPendingLanguage] = useState<LanguageCode | null>(null);
   const [leadCapture, setLeadCapture] = useState<LeadCapture | null>(null);
   const [isFullReportUnlocked, setIsFullReportUnlocked] = useState(false);
+  const [purchasedPlan, setPurchasedPlan] = useState<"base" | "premium" | null>(null);
   const [isRestoringPayment, setIsRestoringPayment] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [error, setError] = useState("");
@@ -53,6 +54,7 @@ export function AnalyzerShell() {
     setDetectedLanguage(storedReport.detectedLanguage);
     setLeadCapture(storedReport.leadCapture);
     setIsFullReportUnlocked(true);
+    setPurchasedPlan(params.get("plan") === "base" ? "base" : "premium");
     setIsRestoringPayment(false);
     window.history.replaceState(null, "", "/analyzer");
   }, []);
@@ -121,6 +123,7 @@ export function AnalyzerShell() {
     setPendingLanguage(null);
     setLeadCapture(null);
     setIsFullReportUnlocked(false);
+    setPurchasedPlan(null);
     setIsRestoringPayment(false);
     setError("");
   }
@@ -131,6 +134,7 @@ export function AnalyzerShell() {
     setDetectedLanguage(item.detectedLanguage);
     setLeadCapture(item.leadCapture);
     setIsFullReportUnlocked(false);
+    setPurchasedPlan(null);
     storeReport(item);
   }
 
@@ -159,6 +163,7 @@ export function AnalyzerShell() {
           isFullReportUnlocked={isFullReportUnlocked}
           isPaymentSuccess={isFullReportUnlocked}
           leadCapture={leadCapture}
+          purchasedPlan={purchasedPlan}
           onReset={reset}
         />
       ) : pendingAnalysis ? (

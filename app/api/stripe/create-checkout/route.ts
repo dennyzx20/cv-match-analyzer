@@ -3,6 +3,28 @@ import Stripe from "stripe";
 
 export const runtime = "nodejs";
 
+type CheckoutPlan = "base" | "premium";
+
+const checkoutPlans: Record<
+  CheckoutPlan,
+  {
+    envPriceId: string;
+    name: string;
+    unitAmount: number;
+  }
+> = {
+  base: {
+    envPriceId: "STRIPE_BASE_PRICE_ID",
+    name: "CV Match Base Report",
+    unitAmount: 999
+  },
+  premium: {
+    envPriceId: "STRIPE_PREMIUM_PRICE_ID",
+    name: "CV Match Premium Report",
+    unitAmount: 1999
+  }
+};
+
 export async function POST(request: Request) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -13,26 +35,29 @@ export async function POST(request: Request) {
     }
 
     const payload = await readCheckoutPayload(request);
+    const selectedPlan = checkoutPlans[payload.plan];
+    const configuredPriceId = process.env[selectedPlan.envPriceId] || getLegacyPremiumPriceId(payload.plan);
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const origin = getCheckoutOrigin(request.url);
     const successUrl = new URL("/analyzer", origin);
     successUrl.searchParams.set("success", "true");
+    successUrl.searchParams.set("plan", payload.plan);
     if (payload.analysisId) {
       successUrl.searchParams.set("analysisId", payload.analysisId);
     }
 
-    const lineItem = process.env.STRIPE_PRICE_ID
+    const lineItem = configuredPriceId
       ? {
-          price: process.env.STRIPE_PRICE_ID,
+          price: configuredPriceId,
           quantity: 1
         }
       : {
           price_data: {
             currency: "eur",
             product_data: {
-              name: "CV Match Full Report"
+              name: selectedPlan.name
             },
-            unit_amount: 1900
+            unit_amount: selectedPlan.unitAmount
           },
           quantity: 1
         };
@@ -40,9 +65,12 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [lineItem],
-      metadata: payload.analysisId ? { analysisId: payload.analysisId } : undefined,
+      metadata: {
+        plan: payload.plan,
+        ...(payload.analysisId ? { analysisId: payload.analysisId } : {})
+      },
       success_url: successUrl.toString(),
-      cancel_url: `${origin}/`
+      cancel_url: `${origin}/analyzer`
     });
 
     if (!session.url) {
@@ -56,15 +84,25 @@ export async function POST(request: Request) {
   }
 }
 
-async function readCheckoutPayload(request: Request): Promise<{ analysisId?: string }> {
+async function readCheckoutPayload(request: Request): Promise<{ analysisId?: string; plan: CheckoutPlan }> {
   try {
-    const body = (await request.json()) as { analysisId?: unknown };
-    return typeof body.analysisId === "string" && body.analysisId.trim()
-      ? { analysisId: body.analysisId.trim() }
-      : {};
+    const body = (await request.json()) as { analysisId?: unknown; plan?: unknown };
+    const plan = body.plan === "base" || body.plan === "premium" ? body.plan : "premium";
+    return {
+      plan,
+      ...(typeof body.analysisId === "string" && body.analysisId.trim() ? { analysisId: body.analysisId.trim() } : {})
+    };
   } catch {
-    return {};
+    return { plan: "premium" };
   }
+}
+
+function getLegacyPremiumPriceId(plan: CheckoutPlan) {
+  if (plan !== "premium") {
+    return undefined;
+  }
+
+  return process.env.STRIPE_PRICE_ID;
 }
 
 function getCheckoutOrigin(requestUrl: string) {

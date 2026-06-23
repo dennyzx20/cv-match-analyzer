@@ -1,0 +1,28 @@
+Sul PC (dopo che Codex ha modificato il progetto)
+
+Vai nella cartella:
+
+cd C:\Users\Denny\Documents\Codex\2026-06-17\voglio-creare-un-mvp-completo-di
+
+Controlla le modifiche:
+
+git status
+
+Aggiungi tutto:
+
+git add .
+
+Crea il commit:
+
+git commit -m "Descrizione modifica"
+
+Invia a GitHub:
+
+git push origin main
+
+
+
+git pull origin main
+npm install
+npm run build
+pm2 restart all
