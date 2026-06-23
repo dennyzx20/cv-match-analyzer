@@ -17,12 +17,6 @@ type AnalysisResultsProps = {
   onReset: () => void;
 };
 
-const premiumPlaceholders = [
-  "Personalized detail available in the full report",
-  "Role-specific insight available after unlock",
-  "Complete recommendation hidden in free preview"
-];
-
 export function AnalysisResults({
   analysisId,
   analysis,
@@ -74,18 +68,18 @@ export function AnalysisResults({
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <RiskBadge level={analysis.atsRiskLevel} />
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-slate-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600">
                 <TrendingUp size={15} aria-hidden="true" />
                 ATS analytics preview
               </span>
             </div>
-            <h2 className="bg-gradient-to-b from-white to-slate-400 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+            <h2 className="bg-gradient-to-r from-slate-950 to-blue-900 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
               Your free ATS preview is ready
             </h2>
-            <p className="mt-4 max-w-3xl leading-7 text-slate-400">{analysis.shortSummary}</p>
+            <p className="mt-4 max-w-3xl leading-7 text-slate-600">{analysis.shortSummary}</p>
             {leadCapture?.email ? (
               <p className="mt-4 text-sm text-slate-500">
-                Email captured for this session: <span className="font-semibold text-slate-300">{leadCapture.email}</span>
+                Email captured for this session: <span className="font-semibold text-slate-700">{leadCapture.email}</span>
               </p>
             ) : null}
           </div>
@@ -103,8 +97,7 @@ export function AnalysisResults({
           {purchasedPlan === "base" ? <BaseReport analysis={analysis} /> : <FullReport analysis={analysis} />}
         </>
       ) : (
-        <div className="relative">
-          <LockedReportPreview />
+        <div>
           <PaywallCard error={checkoutError} isLoading={isCheckoutLoading} onUnlock={handleUnlock} />
         </div>
       )}
@@ -113,12 +106,12 @@ export function AnalysisResults({
         <Button
           onClick={onReset}
           variant="secondary"
-          className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+          className="rounded-2xl border border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
         >
           <RotateCcw size={17} aria-hidden="true" />
           Re-run analysis with new CV
         </Button>
-        <p className="text-sm font-semibold text-cyan-200">Improve your CV again -&gt;</p>
+        <p className="text-sm font-semibold text-blue-700">Improve your CV again -&gt;</p>
       </div>
     </div>
   );
@@ -148,13 +141,13 @@ function ScoreRing({ score }: { score: number }) {
 
   return (
     <div className="mx-auto text-center">
-      <div className="flex h-52 w-52 items-center justify-center rounded-full shadow-[0_0_80px_rgba(99,102,241,0.22)]" style={{ background }}>
-        <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full border border-white/10 bg-[#0B0F1A]">
-          <span className="text-6xl font-bold text-white">{displayScore}</span>
-          <span className="text-sm font-medium text-slate-400">out of 100</span>
+      <div className="flex h-52 w-52 items-center justify-center rounded-full shadow-xl shadow-slate-200/70" style={{ background }}>
+        <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full border border-slate-200 bg-white">
+          <span className="text-6xl font-bold text-slate-950">{displayScore}</span>
+          <span className="text-sm font-medium text-slate-500">out of 100</span>
         </div>
       </div>
-      <p className="mt-4 text-sm font-bold uppercase tracking-wide text-slate-400">ATS Match Score</p>
+      <p className="mt-4 text-sm font-bold uppercase tracking-wide text-slate-500">ATS Match Score</p>
     </div>
   );
 }
@@ -164,9 +157,9 @@ function RiskBadge({ level }: { level: CvAnalysisResult["atsRiskLevel"] }) {
     <span
       className={cn(
         "rounded-full border px-3 py-1 text-sm font-semibold",
-        level === "Low" && "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-        level === "Medium" && "border-yellow-300/20 bg-yellow-300/10 text-yellow-200",
-        level === "High" && "border-red-400/20 bg-red-400/10 text-red-300"
+        level === "Low" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+        level === "Medium" && "border-yellow-200 bg-yellow-50 text-yellow-700",
+        level === "High" && "border-red-200 bg-red-50 text-red-700"
       )}
     >
       Risk level: {level}
@@ -186,16 +179,16 @@ function PaymentSuccessBanner({
   const hasPdfDownload = purchasedPlan !== "base";
 
   return (
-    <div className="glass-card rounded-3xl border-emerald-400/20 p-5 md:flex md:items-center md:justify-between md:gap-5">
+    <div className="glass-card rounded-3xl border-emerald-200 p-5 md:flex md:items-center md:justify-between md:gap-5">
       <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-300 shadow-[0_0_36px_rgba(34,197,94,0.18)]">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm">
           <CheckCircle2 size={25} aria-hidden="true" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-white">
+          <h3 className="text-2xl font-bold text-slate-950">
             {isPaymentSuccess ? <>Payment successful {"\u{1F389}"}</> : "Full report unlocked"}
           </h3>
-          <p className="mt-1 text-slate-400">
+          <p className="mt-1 text-slate-600">
             Your {purchasedPlan === "base" ? "Base" : "Premium"} CV report is ready. The selected report is unlocked below.
           </p>
         </div>
@@ -203,14 +196,14 @@ function PaymentSuccessBanner({
       {hasPdfDownload ? (
         <Button
           type="button"
-          className="mt-5 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_28px_rgba(99,102,241,0.26)] md:mt-0"
+          className="mt-5 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 shadow-lg shadow-blue-500/20 md:mt-0"
           onClick={() => downloadAnalysisPdf(analysis)}
         >
           <Download size={17} aria-hidden="true" />
           Download CV Report (PDF)
         </Button>
       ) : (
-        <p className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300 md:mt-0">
+        <p className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 md:mt-0">
           PDF export is included in Premium.
         </p>
       )}
@@ -222,7 +215,7 @@ function LanguageBadge({ language }: { language: LanguageCode }) {
   const label = language === "it" ? "\u{1F1EE}\u{1F1F9} Italian CV detected" : "\u{1F1EC}\u{1F1E7} English CV detected";
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-sm font-semibold text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
+    <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 shadow-sm">
       <Globe2 size={15} aria-hidden="true" />
       {label}
     </span>
@@ -239,13 +232,13 @@ function PaywallCard({
   onUnlock: (plan: "base" | "premium") => void;
 }) {
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center p-5">
-      <div className="glass-card w-full max-w-4xl rounded-3xl border-indigo-300/20 p-6 text-center shadow-[0_30px_120px_rgba(99,102,241,0.32)] md:p-8">
-        <div className="mx-auto flex h-16 w-16 animate-pulse items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-[0_0_48px_rgba(139,92,246,0.45)]">
+    <div className="flex items-center justify-center">
+      <div className="glass-card w-full max-w-4xl rounded-3xl p-6 text-center md:p-8">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/20">
           <Lock size={28} aria-hidden="true" />
         </div>
-        <h3 className="mt-6 text-3xl font-bold text-white">Choose your AI report</h3>
-        <p className="mx-auto mt-3 max-w-md leading-7 text-slate-400">
+        <h3 className="mt-6 text-3xl font-bold text-slate-950">Choose your AI report</h3>
+        <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600">
           Unlock complete ATS breakdown, keyword gaps and CV optimization strategy.
         </p>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -267,17 +260,17 @@ function PaywallCard({
             onClick={() => onUnlock("premium")}
           />
         </div>
-        <div className="mt-5 flex flex-wrap justify-center gap-3 text-sm font-medium text-slate-400">
+        <div className="mt-5 flex flex-wrap justify-center gap-3 text-sm font-medium text-slate-600">
           <span className="inline-flex items-center gap-2">
-            <ShieldCheck size={15} className="text-emerald-300" aria-hidden="true" />
+            <ShieldCheck size={15} className="text-emerald-600" aria-hidden="true" />
             Secure payment powered by Stripe
           </span>
           <span className="inline-flex items-center gap-2">
-            <Zap size={15} className="text-cyan-300" aria-hidden="true" />
+            <Zap size={15} className="text-blue-600" aria-hidden="true" />
             Instant access after payment
           </span>
         </div>
-        {error ? <p className="mt-4 text-sm leading-6 text-red-300">{error}</p> : null}
+        {error ? <p className="mt-4 text-sm leading-6 text-red-600">{error}</p> : null}
       </div>
     </div>
   );
@@ -301,18 +294,18 @@ function OfferCard({
   price: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-5 text-left ${featured ? "border-indigo-300/30 bg-indigo-400/10" : "border-white/10 bg-white/5"}`}>
+    <div className={`rounded-2xl border p-5 text-left transition duration-200 hover:-translate-y-0.5 ${featured ? "border-blue-200 bg-blue-50 shadow-lg shadow-blue-100/70" : "border-slate-200 bg-white"}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-200">{name}</p>
-          <p className="mt-2 text-3xl font-bold text-white">{price}</p>
-          <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">{name}</p>
+          <p className="mt-2 text-3xl font-bold text-slate-950">{price}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
         </div>
-        {featured ? <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-bold text-cyan-200">Best value</span> : null}
+        {featured ? <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white">Best value</span> : null}
       </div>
       <Button
         onClick={onClick}
-        className={`mt-5 h-12 w-full rounded-2xl ${featured ? "animate-gradient bg-gradient-to-r from-indigo-500 via-blue-500 to-violet-500 shadow-[0_0_36px_rgba(99,102,241,0.35)]" : "bg-white/10 text-white hover:bg-white/15"}`}
+        className={`mt-5 h-12 w-full rounded-2xl ${featured ? "bg-gradient-to-r from-blue-600 to-violet-600 shadow-lg shadow-blue-500/20" : "border border-slate-200 bg-slate-900 text-white hover:bg-slate-800"}`}
         disabled={isLoading}
       >
         {isLoading ? (
@@ -325,57 +318,6 @@ function OfferCard({
         )}
       </Button>
     </div>
-  );
-}
-
-function LockedReportPreview() {
-  const lockedSections = [
-    { title: "All missing keywords", tone: "red" as const },
-    { title: "Matching keywords", tone: "green" as const },
-    { title: "Weaknesses", tone: "amber" as const },
-    { title: "Suggested CV improvements", tone: "blue" as const },
-    { title: "Recommended skills to add", tone: "blue" as const }
-  ];
-
-  return (
-    <div className="pointer-events-none blur-sm">
-      <div className="grid gap-5 lg:grid-cols-2">
-        {lockedSections.map((section) => (
-          <LockedListCard key={section.title} {...section} />
-        ))}
-      </div>
-      <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <LockedTextCard title="AI Recommendations" />
-        <LockedTextCard title="Final optimization strategy" />
-      </div>
-    </div>
-  );
-}
-
-function LockedListCard({
-  title,
-  tone
-}: {
-  title: string;
-  tone: "blue" | "green" | "amber" | "red";
-}) {
-  return (
-    <DashboardCard>
-      <ListCardContent title={title} items={premiumPlaceholders} tone={tone} />
-    </DashboardCard>
-  );
-}
-
-function LockedTextCard({ title }: { title: string }) {
-  return (
-    <DashboardCard>
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-      <div className="mt-4 space-y-3">
-        <div className="shimmer h-4 rounded-full bg-white/10" />
-        <div className="shimmer h-4 w-4/5 rounded-full bg-white/10" />
-        <div className="shimmer h-4 w-2/3 rounded-full bg-white/10" />
-      </div>
-    </DashboardCard>
   );
 }
 
@@ -422,7 +364,7 @@ function BaseReport({ analysis }: { analysis: CvAnalysisResult }) {
 }
 
 function DashboardCard({ children }: { children: React.ReactNode }) {
-  return <div className="glass-card rounded-2xl p-5 transition duration-300 hover:scale-[1.02] md:p-6">{children}</div>;
+  return <div className="glass-card rounded-2xl p-5 transition duration-200 hover:-translate-y-0.5 md:p-6">{children}</div>;
 }
 
 function ListCard({
@@ -444,17 +386,17 @@ function ListCard({
 function KeywordPills({ title, items }: { title: string; items: string[] }) {
   return (
     <DashboardCard>
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
       {items.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {items.map((item) => (
-            <span key={item} className="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-sm font-semibold text-red-200">
+            <span key={item} className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700">
               {item}
             </span>
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-slate-400">No missing keywords returned.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">No missing keywords returned.</p>
       )}
     </DashboardCard>
   );
@@ -463,11 +405,11 @@ function KeywordPills({ title, items }: { title: string; items: string[] }) {
 function StrengthCards({ title, items }: { title: string; items: string[] }) {
   return (
     <DashboardCard>
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
       <div className="mt-4 grid gap-3">
         {items.map((item) => (
-          <div key={item} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm leading-6 text-slate-300">
-            <CheckCircle2 size={16} className="mr-2 inline text-emerald-300" aria-hidden="true" />
+          <div key={item} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-slate-700">
+            <CheckCircle2 size={16} className="mr-2 inline text-emerald-600" aria-hidden="true" />
             {item}
           </div>
         ))}
@@ -479,11 +421,11 @@ function StrengthCards({ title, items }: { title: string; items: string[] }) {
 function RecommendationBlocks({ title, items }: { title: string; items: string[] }) {
   return (
     <DashboardCard>
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
       <div className="mt-4 space-y-3">
         {items.map((item) => (
-          <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-300">
-            <Sparkles size={16} className="mr-2 inline text-cyan-300" aria-hidden="true" />
+          <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+            <Sparkles size={16} className="mr-2 inline text-blue-600" aria-hidden="true" />
             {item}
           </div>
         ))}
@@ -495,8 +437,8 @@ function RecommendationBlocks({ title, items }: { title: string; items: string[]
 function NotionBlock({ title, text }: { title: string; text: string }) {
   return (
     <DashboardCard>
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-      <div className="mt-4 whitespace-pre-line rounded-2xl border border-white/10 bg-white/[0.04] p-4 leading-7 text-slate-300">
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
+      <div className="mt-4 whitespace-pre-line rounded-2xl border border-slate-200 bg-slate-50 p-4 leading-7 text-slate-700">
         {text}
       </div>
     </DashboardCard>
@@ -514,20 +456,20 @@ function ListCardContent({
 }) {
   return (
     <>
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
       {items.length ? (
         <ul className="mt-4 space-y-3">
           {items.map((item) => (
-            <li key={item} className="flex gap-3 text-sm leading-6 text-slate-300">
+            <li key={item} className="flex gap-3 text-sm leading-6 text-slate-700">
               {tone === "green" ? (
-                <CheckCircle2 size={16} className="mt-1 shrink-0 text-emerald-300" aria-hidden="true" />
+                <CheckCircle2 size={16} className="mt-1 shrink-0 text-emerald-600" aria-hidden="true" />
               ) : (
                 <span
                   className={cn(
                     "mt-2 h-2 w-2 shrink-0 rounded-full",
-                    tone === "blue" && "bg-cyan-300",
-                    tone === "amber" && "bg-yellow-300",
-                    tone === "red" && "bg-red-300"
+                    tone === "blue" && "bg-blue-500",
+                    tone === "amber" && "bg-yellow-500",
+                    tone === "red" && "bg-red-500"
                   )}
                 />
               )}
@@ -536,7 +478,7 @@ function ListCardContent({
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-slate-400">No items returned for this section.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">No items returned for this section.</p>
       )}
     </>
   );

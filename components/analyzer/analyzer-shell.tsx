@@ -141,14 +141,14 @@ export function AnalyzerShell() {
   return (
     <section className="mx-auto max-w-7xl px-5 py-10 md:py-16">
       <div className="mx-auto mb-10 max-w-4xl text-center">
-        <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-cyan-200 shadow-lg shadow-cyan-500/10 backdrop-blur">
-          <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(34,211,238,0.9)]" />
+        <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm">
+          <span className="h-2 w-2 rounded-full bg-cyan-500" />
           AI-powered ATS optimization
         </div>
-        <h1 className="mt-6 bg-gradient-to-b from-white to-slate-400 bg-clip-text text-4xl font-bold leading-tight text-transparent md:text-6xl">
+        <h1 className="mt-6 bg-gradient-to-r from-slate-950 via-blue-950 to-violet-900 bg-clip-text text-4xl font-bold leading-tight text-transparent md:text-6xl">
           Analyze your CV against a real job post
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+        <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
           Upload your CV PDF and paste a job description to generate a structured ATS-style report in the CV language.
         </p>
       </div>
@@ -244,14 +244,14 @@ function readHistory(): HistoryItem[] {
 function RestorePaymentState({ onReset }: { onReset: () => void }) {
   return (
     <div className="glass-card mx-auto max-w-2xl rounded-3xl p-8 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-[0_0_48px_rgba(139,92,246,0.45)]">
-        <span className="h-7 w-7 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 text-white shadow-lg shadow-blue-500/20">
+        <span className="h-7 w-7 animate-spin rounded-full border-2 border-white/40 border-t-white" />
       </div>
-      <h2 className="mt-6 text-3xl font-bold text-white">We are restoring your session, please wait...</h2>
-      <p className="mx-auto mt-3 max-w-md leading-7 text-slate-400">
+      <h2 className="mt-6 text-3xl font-bold text-slate-950">We are restoring your session, please wait...</h2>
+      <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600">
         Restoring your report after Stripe checkout. Keep this tab open while we recover your analysis.
       </p>
-      <button type="button" className="mt-6 text-sm font-semibold text-cyan-200 hover:text-cyan-100" onClick={onReset}>
+      <button type="button" className="mt-6 text-sm font-semibold text-blue-700 hover:text-blue-900" onClick={onReset}>
         Analyze another CV
       </button>
     </div>
@@ -267,26 +267,26 @@ function HistorySection({ history, onOpen }: { history: HistoryItem[]; onOpen: (
     <div className="glass-card rounded-2xl p-5 transition duration-300">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Recent analyses</p>
-          <h2 className="mt-1 text-xl font-bold text-white">Last 3 analyses</h2>
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">Recent analyses</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-950">Last 3 analyses</h2>
         </div>
-        <p className="text-sm font-semibold text-cyan-200">Improve your CV again -&gt;</p>
+        <p className="text-sm font-semibold text-blue-700">Improve your CV again -&gt;</p>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {history.map((item) => (
           <button
             key={item.id}
             type="button"
-            className="focus-ring rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition duration-300 hover:scale-[1.02] hover:border-cyan-300/40 hover:bg-white/[0.07] hover:shadow-[0_18px_50px_rgba(34,211,238,0.12)]"
+            className="focus-ring rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-white hover:shadow-lg hover:shadow-blue-100/60"
             onClick={() => onOpen(item)}
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="text-2xl font-bold text-white">{item.analysis.overallMatchScore}</span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-slate-300">
+              <span className="text-2xl font-bold text-slate-950">{item.analysis.overallMatchScore}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
                 {item.detectedLanguage === "it" ? "Italian" : "English"}
               </span>
             </div>
-            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">{item.analysis.shortSummary}</p>
+            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{item.analysis.shortSummary}</p>
           </button>
         ))}
       </div>

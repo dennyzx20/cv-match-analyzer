@@ -3,11 +3,11 @@ import { SiteHeader } from "@/components/marketing/site-header";
 
 export default function AnalyzerPage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#0B0F1A] text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(99,102,241,0.28),transparent_34%),radial-gradient(circle_at_80%_20%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(180deg,#0B0F1A_0%,#101525_52%,#0B0F1A_100%)]" />
+    <main className="min-h-screen overflow-hidden bg-slate-50 text-slate-950">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(139,92,246,0.12),transparent_26%),linear-gradient(180deg,#f8fafc_0%,#eef6ff_45%,#f8fafc_100%)]" />
       <div className="relative">
-      <SiteHeader />
-      <AnalyzerShell />
+        <SiteHeader variant="light" />
+        <AnalyzerShell />
       </div>
     </main>
   );

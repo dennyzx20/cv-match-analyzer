@@ -9,8 +9,8 @@ export function SiteHeader({ variant = "dark" }: { variant?: "light" | "dark" })
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 border-b backdrop-blur-xl",
-        isLight ? "border-slate-200/80 bg-white/80" : "border-white/10 bg-[#0B0F1A]/70"
+        "sticky top-0 z-40 border-b",
+        isLight ? "border-slate-200/80 bg-white/95" : "border-white/10 bg-[#0B0F1A]/90"
       )}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
