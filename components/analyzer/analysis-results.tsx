@@ -112,8 +112,17 @@ export function AnalysisResults({
 
       {isFullReportUnlocked ? (
         <>
-          <PaymentSuccessBanner analysis={analysis} isPaymentSuccess={isPaymentSuccess} purchasedPlan={purchasedPlan} />
-          {purchasedPlan === "base" ? <BaseReport analysis={analysis} /> : <FullReport analysis={analysis} />}
+          <PaymentSuccessBanner
+            analysis={analysis}
+            detectedLanguage={detectedLanguage}
+            isPaymentSuccess={isPaymentSuccess}
+            purchasedPlan={purchasedPlan}
+          />
+          {purchasedPlan === "base" ? (
+            <BaseReport analysis={analysis} />
+          ) : (
+            <FullReport analysis={analysis} detectedLanguage={detectedLanguage} />
+          )}
         </>
       ) : (
         <div>
@@ -194,10 +203,12 @@ function RiskBadge({ level }: { level: CvAnalysisResult["atsRiskLevel"] }) {
 
 function PaymentSuccessBanner({
   analysis,
+  detectedLanguage,
   isPaymentSuccess,
   purchasedPlan
 }: {
   analysis: CvAnalysisResult;
+  detectedLanguage: LanguageCode;
   isPaymentSuccess: boolean;
   purchasedPlan: "base" | "premium" | null;
 }) {
@@ -222,7 +233,7 @@ function PaymentSuccessBanner({
         <Button
           type="button"
           className="mt-5 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 shadow-lg shadow-blue-500/20 md:mt-0"
-          onClick={() => downloadAnalysisPdf(analysis)}
+          onClick={() => downloadAnalysisPdf(analysis, detectedLanguage)}
         >
           <Download size={17} aria-hidden="true" />
           Download CV Report (PDF)
@@ -393,7 +404,7 @@ function OfferCard({
   );
 }
 
-function FullReport({ analysis }: { analysis: CvAnalysisResult }) {
+function FullReport({ analysis, detectedLanguage }: { analysis: CvAnalysisResult; detectedLanguage: LanguageCode }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-2">
@@ -407,7 +418,7 @@ function FullReport({ analysis }: { analysis: CvAnalysisResult }) {
         <NotionBlock title="AI rewritten professional summary" text={analysis.rewrittenProfessionalSummary} />
         <NotionBlock title="Final optimization strategy" text={analysis.finalRecommendation} />
       </div>
-      <NotionBlock title="Personalized cover letter draft" text={buildCoverLetterDraft(analysis)} />
+      <NotionBlock title={detectedLanguage === "it" ? "Lettera di presentazione personalizzata" : "Personalized cover letter draft"} text={buildCoverLetterDraft(analysis, detectedLanguage)} />
     </div>
   );
 }
@@ -556,8 +567,8 @@ function ListCardContent({
   );
 }
 
-function downloadAnalysisPdf(analysis: CvAnalysisResult) {
-  const pdf = buildPremiumPdfReport(analysis);
+function downloadAnalysisPdf(analysis: CvAnalysisResult, language: LanguageCode) {
+  const pdf = buildPremiumPdfReport(analysis, language);
   const blob = new Blob([pdf], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -585,18 +596,275 @@ function writePendingCheckout(plan: CheckoutPlan, analysisId: string | null, sou
   );
 }
 
-function buildCoverLetterDraft(analysis: CvAnalysisResult) {
-  const strongestPoint = analysis.strengths[0] || "my background aligns with the role requirements";
-  const improvementFocus = analysis.missingKeywords[0] || "the core priorities of the role";
+function buildCoverLetterDraft(analysis: CvAnalysisResult, language: LanguageCode) {
+  const strengths = analysis.strengths.slice(0, 2);
+  const skills = analysis.matchingKeywords.slice(0, 3);
+  const improvementFocus = analysis.missingKeywords.slice(0, 2);
+
+  if (language === "it") {
+    return [
+      "Gentile Responsabile della selezione,",
+      "",
+      "desidero candidarmi per questa opportunita perche il mio profilo presenta elementi concreti di coerenza con le esigenze del ruolo. Dall'analisi del CV emergono esperienze e competenze che possono essere valorizzate in modo piu mirato per comunicare subito il potenziale contributo al team.",
+      "",
+      strengths.length
+        ? `In particolare, metterei in evidenza ${joinNaturalList(strengths, "it")}. Questi aspetti aiutano a posizionare la candidatura come solida, orientata ai risultati e rilevante rispetto alle responsabilita richieste.`
+        : "In particolare, metterei in evidenza le esperienze piu rilevanti, i risultati ottenuti e le competenze trasferibili che dimostrano capacita di adattamento e contributo operativo.",
+      "",
+      skills.length
+        ? `La candidatura puo essere rafforzata richiamando in modo naturale competenze gia presenti come ${joinNaturalList(skills, "it")}, collegandole a esempi concreti e risultati misurabili.`
+        : "La candidatura puo essere rafforzata collegando le competenze principali a esempi concreti, responsabilita svolte e risultati misurabili.",
+      "",
+      improvementFocus.length
+        ? `Per aumentare l'allineamento con l'offerta, consiglierei inoltre di integrare meglio riferimenti a ${joinNaturalList(improvementFocus, "it")}, evitando un elenco generico e inserendoli invece nei punti del CV piu pertinenti.`
+        : "Per aumentare l'allineamento con l'offerta, consiglierei inoltre di rendere piu esplicito il legame tra esperienze, competenze e requisiti indicati nell'annuncio.",
+      "",
+      "Sarei lieto di approfondire in colloquio come il mio percorso possa rispondere alle necessita della posizione e contribuire agli obiettivi dell'azienda.",
+      "",
+      "Cordiali saluti"
+    ].join("\n");
+  }
 
   return [
     "Dear Hiring Manager,",
     "",
-    `I am excited to apply for this role because ${strongestPoint}. After reviewing the position requirements, I can see a strong fit between my experience and the outcomes your team is looking for.`,
+    "I am pleased to apply for this opportunity because my profile shows a clear connection with the requirements of the role. The CV analysis highlights experience and skills that can be positioned more strongly to communicate immediate relevance and value to your team.",
     "",
-    `My CV already shows relevant strengths, and I would emphasize ${improvementFocus} more clearly to make the application even more targeted. ${analysis.finalRecommendation}`,
+    strengths.length
+      ? `In particular, I would emphasize ${joinNaturalList(strengths, "en")}. These points help present the application as focused, credible and aligned with the responsibilities described in the job post.`
+      : "In particular, I would emphasize the most relevant responsibilities, achievements and transferable skills that show adaptability and practical impact.",
     "",
-    "Thank you for considering my application. I would welcome the opportunity to discuss how my experience can support your team."
+    skills.length
+      ? `The application can also be strengthened by naturally referencing existing skills such as ${joinNaturalList(skills, "en")}, connecting them to concrete examples and measurable outcomes.`
+      : "The application can also be strengthened by connecting core skills to concrete examples, responsibilities and measurable outcomes.",
+    "",
+    improvementFocus.length
+      ? `To improve alignment with the role, I would also add clearer references to ${joinNaturalList(improvementFocus, "en")}, placing them in the most relevant CV sections rather than listing them generically.`
+      : "To improve alignment with the role, I would make the connection between experience, skills and the job requirements more explicit throughout the CV.",
+    "",
+    "I would welcome the opportunity to discuss how my background can support the needs of the position and contribute to your team's goals.",
+    "",
+    "Kind regards"
+  ].join("\n");
+}
+
+function buildSuggestedHeadline(analysis: CvAnalysisResult, language: LanguageCode) {
+  const skills = [...analysis.matchingKeywords, ...analysis.recommendedSkillsToAdd].slice(0, 3);
+  if (language === "it") {
+    return skills.length
+      ? `Profilo orientato al ruolo con focus su ${joinNaturalList(skills, "it")}`
+      : "Profilo professionale orientato al ruolo con competenze trasferibili e attenzione ai risultati";
+  }
+
+  return skills.length
+    ? `Role-aligned candidate focused on ${joinNaturalList(skills, "en")}`
+    : "Role-aligned professional with transferable skills and results-focused experience";
+}
+
+function buildImprovedExperiencePhrases(analysis: CvAnalysisResult, language: LanguageCode) {
+  const strengths = analysis.strengths.slice(0, 2);
+  const keywords = analysis.matchingKeywords.slice(0, 2);
+  const improvements = analysis.suggestedCvImprovements.slice(0, 2);
+
+  if (language === "it") {
+    return [
+      strengths[0]
+        ? `Ho contribuito in modo concreto a ${strengths[0].toLowerCase()}, collegando responsabilita operative e risultati rilevanti per il ruolo.`
+        : "Ho gestito attivita operative rilevanti per il ruolo, mantenendo attenzione a qualita, affidabilita e collaborazione.",
+      keywords[0]
+        ? `Ho applicato competenze legate a ${keywords[0]} in contesti pratici, trasformandole in supporto misurabile alle attivita del team.`
+        : "Ho applicato competenze tecniche e organizzative in contesti pratici, supportando il raggiungimento degli obiettivi del team.",
+      improvements[0]
+        ? `Per rafforzare il CV, riscriverei l'esperienza includendo esempi concreti relativi a ${improvements[0].toLowerCase()}.`
+        : "Per rafforzare il CV, aggiungerei risultati misurabili, strumenti utilizzati e responsabilita direttamente collegate all'annuncio."
+    ];
+  }
+
+  return [
+    strengths[0]
+      ? `Contributed directly to ${strengths[0].toLowerCase()}, connecting day-to-day responsibilities with outcomes relevant to the target role.`
+      : "Managed role-relevant responsibilities with a focus on quality, reliability and collaboration.",
+    keywords[0]
+      ? `Applied ${keywords[0]} in practical contexts, turning this capability into measurable support for team activities.`
+      : "Applied technical and organizational skills in practical contexts to support team goals.",
+    improvements[0]
+      ? `To strengthen the CV, rewrite the experience with concrete examples related to ${improvements[0].toLowerCase()}.`
+      : "To strengthen the CV, add measurable outcomes, tools used and responsibilities directly connected to the job post."
+  ];
+}
+
+function buildRequirementRows(analysis: CvAnalysisResult, copy: ReportCopy, language: LanguageCode) {
+  const rows = [
+    ...analysis.matchingKeywords.slice(0, 4).map((keyword) => ({
+      requirement: keyword,
+      status: copy.present,
+      color: pdfColors.green,
+      suggestion:
+        language === "it"
+          ? `Mantienilo nel CV e collegalo a un risultato o responsabilita concreta.`
+          : "Keep it in the CV and connect it to a concrete result or responsibility."
+    })),
+    ...analysis.missingKeywords.slice(0, 4).map((keyword) => ({
+      requirement: keyword,
+      status: copy.missing,
+      color: pdfColors.red,
+      suggestion:
+        language === "it"
+          ? `Inserisci questa keyword in una sezione pertinente solo se supportata da esperienza reale.`
+          : "Add this keyword in a relevant section only when it is supported by real experience."
+    })),
+    ...analysis.recommendedSkillsToAdd.slice(0, 2).map((skill) => ({
+      requirement: skill,
+      status: copy.partial,
+      color: pdfColors.yellow,
+      suggestion:
+        language === "it"
+          ? "Aggiungi contesto: strumenti, attivita svolte e impatto prodotto."
+          : "Add context: tools used, activities performed and impact created."
+    }))
+  ];
+
+  return rows.slice(0, 8);
+}
+
+function buildSevenDayPlan(analysis: CvAnalysisResult, language: LanguageCode) {
+  const missing = analysis.missingKeywords.slice(0, 3);
+  const improvements = analysis.suggestedCvImprovements.slice(0, 3);
+
+  if (language === "it") {
+    return [
+      "Giorno 1: Rileggi l'annuncio e seleziona i 6 requisiti piu importanti da riflettere nel CV.",
+      `Giorno 2: Integra le keyword prioritarie${missing.length ? `: ${joinNaturalList(missing, "it")}` : ""}, senza forzature e solo dove coerenti.`,
+      "Giorno 3: Riscrivi il profilo professionale usando il testo ottimizzato del report.",
+      improvements[0] ? `Giorno 4: Applica questa modifica concreta: ${improvements[0]}` : "Giorno 4: Aggiungi esempi concreti e risultati misurabili alle esperienze principali.",
+      improvements[1] ? `Giorno 5: Rafforza una seconda area: ${improvements[1]}` : "Giorno 5: Migliora la leggibilita ATS con sezioni chiare e titoli standard.",
+      "Giorno 6: Prepara email breve e lettera di presentazione, adattandole al nome dell'azienda.",
+      "Giorno 7: Controlla checklist ATS, esporta il CV in PDF pulito e invia la candidatura."
+    ];
+  }
+
+  return [
+    "Day 1: Re-read the job post and identify the 6 most important requirements to reflect in the CV.",
+    `Day 2: Add priority keywords${missing.length ? `: ${joinNaturalList(missing, "en")}` : ""}, only where they are accurate and relevant.`,
+    "Day 3: Rewrite the professional summary using the optimized version in this report.",
+    improvements[0] ? `Day 4: Apply this concrete improvement: ${improvements[0]}` : "Day 4: Add concrete examples and measurable outcomes to the main experience entries.",
+    improvements[1] ? `Day 5: Strengthen a second area: ${improvements[1]}` : "Day 5: Improve ATS readability with clear sections and standard headings.",
+    "Day 6: Prepare the short email and cover letter, adapting them to the company name.",
+    "Day 7: Review the ATS checklist, export a clean PDF CV and submit the application."
+  ];
+}
+
+function buildAtsChecklist(analysis: CvAnalysisResult, copy: ReportCopy, language: LanguageCode) {
+  const score = analysis.overallMatchScore;
+  const status = {
+    positive: language === "it" ? "POSITIVO" : "POSITIVE",
+    partial: language === "it" ? "PARZIALE" : "PARTIAL",
+    negative: language === "it" ? "NEGATIVO" : "NEGATIVE"
+  };
+
+  return [
+    {
+      item: language === "it" ? "Keyword" : "Keywords",
+      state: analysis.missingKeywords.length <= 2 ? status.positive : analysis.missingKeywords.length <= 5 ? status.partial : status.negative,
+      color: analysis.missingKeywords.length <= 2 ? pdfColors.green : analysis.missingKeywords.length <= 5 ? pdfColors.yellow : pdfColors.red,
+      note: language === "it" ? "Copertura keyword rispetto all'annuncio." : "Keyword coverage against the job post."
+    },
+    {
+      item: language === "it" ? "Formato" : "Format",
+      state: status.partial,
+      color: pdfColors.yellow,
+      note: language === "it" ? "Usa sezioni standard e PDF pulito senza elementi grafici complessi." : "Use standard sections and a clean PDF without complex graphics."
+    },
+    {
+      item: language === "it" ? "Competenze" : "Skills",
+      state: analysis.matchingKeywords.length >= 4 ? status.positive : status.partial,
+      color: analysis.matchingKeywords.length >= 4 ? pdfColors.green : pdfColors.yellow,
+      note: language === "it" ? "Rendi visibili competenze tecniche e trasferibili." : "Make technical and transferable skills clearly visible."
+    },
+    {
+      item: language === "it" ? "Esperienze" : "Experience",
+      state: score >= 70 ? status.positive : status.partial,
+      color: score >= 70 ? pdfColors.green : pdfColors.yellow,
+      note: language === "it" ? "Collega responsabilita ed esperienze ai requisiti dell'offerta." : "Connect responsibilities and experience to the job requirements."
+    },
+    {
+      item: language === "it" ? "Risultati misurabili" : "Measurable results",
+      state: status.partial,
+      color: pdfColors.yellow,
+      note: language === "it" ? "Aggiungi numeri, volumi, tempi, obiettivi o impatto dove possibile." : "Add numbers, volumes, timelines, targets or impact wherever possible."
+    },
+    {
+      item: language === "it" ? "Coerenza con l'offerta" : "Role alignment",
+      state: score >= 75 ? status.positive : score >= 50 ? status.partial : status.negative,
+      color: score >= 75 ? pdfColors.green : score >= 50 ? pdfColors.yellow : pdfColors.red,
+      note: language === "it" ? "Il CV deve sembrare scritto per questa offerta specifica." : "The CV should feel tailored to this specific job post."
+    },
+    {
+      item: language === "it" ? "Leggibilita ATS" : "ATS readability",
+      state: status.partial,
+      color: pdfColors.yellow,
+      note: language === "it" ? "Mantieni layout semplice, testo selezionabile e titoli chiari." : "Keep the layout simple, text selectable and headings clear."
+    }
+  ];
+}
+
+function buildShortApplicationEmail(analysis: CvAnalysisResult, language: LanguageCode) {
+  const strengths = analysis.strengths.slice(0, 1);
+  const skills = analysis.matchingKeywords.slice(0, 2);
+
+  if (language === "it") {
+    return [
+      "Oggetto: Candidatura per la posizione",
+      "",
+      "Gentile Responsabile della selezione,",
+      "",
+      `le invio la mia candidatura per la posizione. Il mio profilo risulta particolarmente coerente con il ruolo grazie a ${strengths[0] || "esperienze e competenze trasferibili rilevanti"}.${skills.length ? ` Nel CV ho valorizzato competenze come ${joinNaturalList(skills, "it")}.` : ""}`,
+      "",
+      "Resto a disposizione per un colloquio e per approfondire come potrei contribuire agli obiettivi del team.",
+      "",
+      "Cordiali saluti"
+    ].join("\n");
+  }
+
+  return [
+    "Subject: Application for the role",
+    "",
+    "Dear Hiring Manager,",
+    "",
+    `I am sending my application for the role. My profile is especially relevant because of ${strengths[0] || "transferable experience and role-relevant skills"}.${skills.length ? ` I have highlighted skills such as ${joinNaturalList(skills, "en")} in my CV.` : ""}`,
+    "",
+    "I would welcome the opportunity to discuss how I could contribute to your team's goals.",
+    "",
+    "Kind regards"
+  ].join("\n");
+}
+
+function buildRecruiterSimulation(analysis: CvAnalysisResult, language: LanguageCode) {
+  const firstStrength = analysis.strengths[0];
+  const firstWeakness = analysis.weaknesses[0] || analysis.missingKeywords[0];
+
+  if (language === "it") {
+    return [
+      `Nei primi 20 secondi un recruiter noterebbe soprattutto un livello di compatibilita pari a ${analysis.overallMatchScore}/100 e un rischio ATS ${analysis.atsRiskLevel}.`,
+      firstStrength
+        ? `Il primo elemento positivo e: ${firstStrength}. Va reso subito visibile nella parte alta del CV.`
+        : "Il primo elemento positivo e la presenza di competenze potenzialmente trasferibili al ruolo.",
+      firstWeakness
+        ? `Il punto che potrebbe ridurre l'interesse iniziale e: ${firstWeakness}. Deve essere corretto prima dell'invio.`
+        : "Il punto da migliorare e rendere piu esplicita la coerenza tra esperienze e requisiti dell'offerta.",
+      "La priorita e far capire immediatamente perche questa candidatura e adatta proprio a questa posizione."
+    ].join("\n");
+  }
+
+  return [
+    `In the first 20 seconds, a recruiter would notice a ${analysis.overallMatchScore}/100 match score and a ${analysis.atsRiskLevel} ATS risk level.`,
+    firstStrength
+      ? `The first positive signal is: ${firstStrength}. It should be visible near the top of the CV.`
+      : "The first positive signal is the presence of transferable skills that can be aligned with the role.",
+    firstWeakness
+      ? `The point that could reduce initial interest is: ${firstWeakness}. This should be corrected before applying.`
+      : "The main improvement area is making the connection between experience and job requirements more explicit.",
+    "The priority is to make it immediately clear why this candidate fits this specific role."
   ].join("\n");
 }
 
@@ -617,27 +885,172 @@ const pdfColors = {
   white: [255, 255, 255] as PdfColor
 };
 
-function buildPremiumPdfReport(analysis: CvAnalysisResult) {
+function joinNaturalList(items: string[], language: LanguageCode) {
+  if (items.length <= 1) {
+    return items[0] ?? "";
+  }
+
+  const conjunction = language === "it" ? " e " : " and ";
+  return `${items.slice(0, -1).join(", ")}${conjunction}${items[items.length - 1]}`;
+}
+
+type ReportCopy = ReturnType<typeof getReportCopy>;
+
+function getReportCopy(language: LanguageCode) {
+  return language === "it"
+    ? {
+        generatedOn: "Generato il",
+        premiumLabel: "Report Premium ATS + revisione recruiter",
+        executiveSummary: "Executive summary",
+        executiveEyebrow: "Sintesi professionale",
+        scoreBreakdown: "Analisi punteggio ATS",
+        atsMatchScore: "Punteggio di compatibilita ATS",
+        overallMatch: "Compatibilita CV/offerta",
+        riskLevel: "Livello di rischio ATS",
+        scoreExplanation: "Il punteggio combina corrispondenza tra competenze, parole chiave, chiarezza del profilo e allineamento con l'annuncio.",
+        recruiterReview: "Valutazione recruiter",
+        recruiterEyebrow: "Punti forti e aree da migliorare",
+        strengths: "Punti di forza",
+        weaknesses: "Aree deboli",
+        strengthLabel: "PUNTO FORTE",
+        weaknessLabel: "DA MIGLIORARE",
+        missingKeywords: "Keyword mancanti",
+        matchingKeywords: "Keyword presenti",
+        keywordEyebrow: "Analisi keyword",
+        improvements: "Raccomandazioni operative",
+        improvementsEyebrow: "Azioni concrete sul CV",
+        improvementLabel: "AZIONE",
+        rewrittenSummary: "Profilo professionale riscritto",
+        rewrittenEyebrow: "Testo pronto da usare",
+        recommendedSkills: "Competenze consigliate da aggiungere",
+        optimizedCv: "Versione ottimizzata del profilo CV",
+        optimizedCvEyebrow: "Asset pronti da inserire",
+        suggestedHeadline: "Titolo professionale suggerito",
+        improvedExperiencePhrases: "Frasi migliorate per le esperienze",
+        matchTable: "Tabella di corrispondenza CV / offerta",
+        matchTableEyebrow: "Requisiti, stato e azione consigliata",
+        requiredRequirement: "Requisito richiesto",
+        cvStatus: "Stato nel CV",
+        alignmentSuggestion: "Suggerimento concreto",
+        present: "Presente",
+        missing: "Assente",
+        partial: "Parziale",
+        actionPlan: "Piano d'azione in 7 giorni",
+        actionPlanEyebrow: "Roadmap pratica per candidarsi meglio",
+        dayLabel: "GIORNO",
+        atsChecklist: "Checklist ATS finale",
+        atsChecklistEyebrow: "Controllo prima dell'invio",
+        shortEmail: "Email breve di candidatura",
+        shortEmailEyebrow: "Pronta da copiare al recruiter",
+        recruiterSimulation: "Cosa nota un recruiter nei primi 20 secondi",
+        recruiterSimulationEyebrow: "Impressione rapida e priorita",
+        finalRecommendation: "Raccomandazione finale",
+        finalEyebrow: "Prossima mossa consigliata",
+        coverLetter: "Lettera di presentazione personalizzata",
+        coverLetterEyebrow: "Pronta da copiare e adattare",
+        noItems: "Nessun elemento restituito",
+        noKeywords: "Nessuna keyword restituita",
+        footer: "CV Match Analyzer - Report Premium",
+        page: "Pagina"
+      }
+    : {
+        generatedOn: "Generated on",
+        premiumLabel: "Premium ATS + recruiter-style CV analysis",
+        executiveSummary: "Executive summary",
+        executiveEyebrow: "Professional snapshot",
+        scoreBreakdown: "ATS score analysis",
+        atsMatchScore: "ATS match score",
+        overallMatch: "Overall CV to job match",
+        riskLevel: "ATS risk level",
+        scoreExplanation: "The score combines skill match, keyword coverage, profile clarity and alignment with the job description.",
+        recruiterReview: "Recruiter review",
+        recruiterEyebrow: "Strengths and improvement areas",
+        strengths: "Strengths",
+        weaknesses: "Weaknesses",
+        strengthLabel: "STRENGTH",
+        weaknessLabel: "IMPROVE",
+        missingKeywords: "Missing keywords",
+        matchingKeywords: "Matching keywords",
+        keywordEyebrow: "Keyword analysis",
+        improvements: "CV improvement actions",
+        improvementsEyebrow: "Concrete next steps",
+        improvementLabel: "ACTION",
+        rewrittenSummary: "AI rewritten professional summary",
+        rewrittenEyebrow: "Ready-to-use positioning",
+        recommendedSkills: "Recommended skills to add",
+        optimizedCv: "Optimized CV profile version",
+        optimizedCvEyebrow: "Ready-to-use application assets",
+        suggestedHeadline: "Suggested professional headline",
+        improvedExperiencePhrases: "Improved experience bullet phrases",
+        matchTable: "CV / Job Description match table",
+        matchTableEyebrow: "Requirement, status and concrete action",
+        requiredRequirement: "Required requirement",
+        cvStatus: "CV status",
+        alignmentSuggestion: "Concrete alignment suggestion",
+        present: "Present",
+        missing: "Missing",
+        partial: "Partial",
+        actionPlan: "7-day action plan",
+        actionPlanEyebrow: "Practical roadmap to improve the application",
+        dayLabel: "DAY",
+        atsChecklist: "Final ATS checklist",
+        atsChecklistEyebrow: "Pre-submission quality control",
+        shortEmail: "Short application email",
+        shortEmailEyebrow: "Ready to copy for a recruiter",
+        recruiterSimulation: "What a recruiter notices in the first 20 seconds",
+        recruiterSimulationEyebrow: "Fast impression and priorities",
+        finalRecommendation: "Final recommendation",
+        finalEyebrow: "Recruiter-ready next step",
+        coverLetter: "Personalized cover letter",
+        coverLetterEyebrow: "Ready to copy and adapt",
+        noItems: "No items returned",
+        noKeywords: "No keywords returned",
+        footer: "CV Match Analyzer - Premium Report",
+        page: "Page"
+      };
+}
+
+function buildPremiumPdfReport(analysis: CvAnalysisResult, language: LanguageCode) {
   const renderer = createPdfRenderer();
+  const copy = getReportCopy(language);
   const scoreColor = getScorePdfColor(analysis.overallMatchScore);
   const riskColor = getRiskPdfColor(analysis.atsRiskLevel);
 
-  renderer.header(analysis, scoreColor, riskColor);
-  renderer.sectionTitle("AI Summary", "Short recruiter-style insight");
+  renderer.header(analysis, copy, language, scoreColor, riskColor);
+  renderer.sectionTitle(copy.executiveSummary, copy.executiveEyebrow);
   renderer.paragraph(analysis.shortSummary, 10.5, pdfColors.muted);
-  renderer.scoreSection(analysis, scoreColor, riskColor);
-  renderer.twoColumnLists("Strengths", analysis.strengths, pdfColors.green, "Weaknesses", analysis.weaknesses, pdfColors.red);
-  renderer.pillsSection("Missing Keywords", analysis.missingKeywords, pdfColors.red);
-  renderer.pillsSection("Matching Keywords", analysis.matchingKeywords, pdfColors.green);
-  renderer.listSection("CV Improvements", analysis.suggestedCvImprovements, pdfColors.blue, "ACTION");
-  renderer.sectionTitle("AI Rewritten Professional Summary", "Ready-to-use positioning");
+  renderer.scoreSection(analysis, copy, scoreColor, riskColor);
+  renderer.twoColumnLists(
+    copy.recruiterReview,
+    copy.recruiterEyebrow,
+    copy.strengths,
+    analysis.strengths,
+    pdfColors.green,
+    copy.strengthLabel,
+    copy.weaknesses,
+    analysis.weaknesses,
+    pdfColors.red,
+    copy.weaknessLabel
+  );
+  renderer.pillsSection(copy.missingKeywords, copy.keywordEyebrow, analysis.missingKeywords, pdfColors.red, copy.noKeywords);
+  renderer.pillsSection(copy.matchingKeywords, copy.keywordEyebrow, analysis.matchingKeywords, pdfColors.green, copy.noKeywords);
+  renderer.listSection(copy.improvements, copy.improvementsEyebrow, analysis.suggestedCvImprovements, pdfColors.blue, copy.improvementLabel, copy.noItems);
+  renderer.optimizedProfileSection(analysis, copy, language);
+  renderer.matchTableSection(buildRequirementRows(analysis, copy, language), copy);
+  renderer.actionPlanSection(buildSevenDayPlan(analysis, language), copy);
+  renderer.checklistSection(buildAtsChecklist(analysis, copy, language), copy);
+  renderer.sectionTitle(copy.shortEmail, copy.shortEmailEyebrow);
+  renderer.callout(buildShortApplicationEmail(analysis, language), pdfColors.blue);
+  renderer.sectionTitle(copy.recruiterSimulation, copy.recruiterSimulationEyebrow);
+  renderer.callout(buildRecruiterSimulation(analysis, language), pdfColors.purple);
+  renderer.sectionTitle(copy.rewrittenSummary, copy.rewrittenEyebrow);
   renderer.callout(analysis.rewrittenProfessionalSummary, pdfColors.blue);
-  renderer.pillsSection("Recommended Skills To Add", analysis.recommendedSkillsToAdd, pdfColors.purple);
-  renderer.sectionTitle("Final Recommendation", "Recruiter-ready next step");
+  renderer.pillsSection(copy.recommendedSkills, copy.keywordEyebrow, analysis.recommendedSkillsToAdd, pdfColors.purple, copy.noKeywords);
+  renderer.sectionTitle(copy.finalRecommendation, copy.finalEyebrow);
   renderer.callout(analysis.finalRecommendation, pdfColors.cyan);
-  renderer.sectionTitle("Personalized Cover Letter Draft", "Premium application asset");
-  renderer.callout(buildCoverLetterDraft(analysis), pdfColors.purple);
-  renderer.footer();
+  renderer.sectionTitle(copy.coverLetter, copy.coverLetterEyebrow);
+  renderer.callout(buildCoverLetterDraft(analysis, language), pdfColors.purple);
+  renderer.footer(copy);
 
   return renderer.toPdf();
 }
@@ -647,8 +1060,8 @@ function createPdfRenderer() {
   let page = pages[0];
   let y = 742;
 
-  function ensureSpace(required: number) {
-    if (y - required < 54) {
+  function ensureSpace(required: number, startNewPage = false) {
+    if (startNewPage || y - required < 64) {
       page = [];
       pages.push(page);
       y = 742;
@@ -679,17 +1092,22 @@ function createPdfRenderer() {
   }
 
   function paragraph(value: string, size = 10.5, color = pdfColors.muted, x = 58, maxLength = 92) {
-    const lines = wrapPdfText(value, maxLength);
-    ensureSpace(lines.length * 15 + 14);
-    lines.forEach((lineText) => {
-      text(lineText, x, y, size, color);
-      y -= 15;
+    const blocks = splitPdfParagraphs(value);
+    const lineGroups = blocks.map((block) => wrapPdfText(block, maxLength));
+    const required = lineGroups.reduce((total, lines) => total + lines.length * 15 + 8, 10);
+    ensureSpace(required);
+    lineGroups.forEach((lines) => {
+      lines.forEach((lineText) => {
+        text(lineText, x, y, size, color);
+        y -= 15;
+      });
+      y -= 6;
     });
-    y -= 8;
+    y -= 4;
   }
 
   function sectionTitle(title: string, eyebrow?: string) {
-    ensureSpace(54);
+    ensureSpace(92);
     y -= 8;
     if (eyebrow) {
       text(eyebrow.toUpperCase(), 58, y, 8, pdfColors.blue, "bold");
@@ -701,14 +1119,15 @@ function createPdfRenderer() {
     y -= 18;
   }
 
-  function header(analysis: CvAnalysisResult, scoreColor: PdfColor, riskColor: PdfColor) {
+  function header(analysis: CvAnalysisResult, copy: ReportCopy, language: LanguageCode, scoreColor: PdfColor, riskColor: PdfColor) {
     drawPageChrome();
     rect(34, 650, 544, 108, [239, 246, 255], true);
     text("CV Match Analyzer", 58, 724, 22, pdfColors.ink, "bold");
-    text("Premium ATS + recruiter-style CV analysis", 58, 704, 10.5, pdfColors.muted);
-    text("ATS SCORE", 420, 724, 8, pdfColors.muted, "bold");
+    text(copy.premiumLabel, 58, 704, 10.5, pdfColors.muted);
+    text(`${copy.generatedOn} ${formatReportDate(language)}`, 58, 686, 9, pdfColors.muted);
+    text(copy.atsMatchScore.toUpperCase(), 420, 724, 8, pdfColors.muted, "bold");
     text(`${analysis.overallMatchScore}/100`, 420, 696, 30, scoreColor, "bold");
-    pill(`Risk: ${analysis.atsRiskLevel}`, 420, 662, riskColor, 96);
+    pill(`${copy.riskLevel}: ${analysis.atsRiskLevel}`, 420, 662, riskColor, 126);
     y = 620;
   }
 
@@ -719,31 +1138,43 @@ function createPdfRenderer() {
     return pillWidth;
   }
 
-  function scoreSection(analysis: CvAnalysisResult, scoreColor: PdfColor, riskColor: PdfColor) {
-    sectionTitle("Score Breakdown", "ATS match score");
-    ensureSpace(82);
-    text("Overall CV to job match", 58, y, 11, pdfColors.ink, "bold");
+  function scoreSection(analysis: CvAnalysisResult, copy: ReportCopy, scoreColor: PdfColor, riskColor: PdfColor) {
+    sectionTitle(copy.scoreBreakdown, copy.atsMatchScore);
+    ensureSpace(112);
+    text(copy.overallMatch, 58, y, 11, pdfColors.ink, "bold");
     text(`${analysis.overallMatchScore}%`, 500, y, 13, scoreColor, "bold");
     y -= 20;
     rect(58, y, 496, 12, [226, 232, 240], true);
     rect(58, y, Math.max(8, 496 * (analysis.overallMatchScore / 100)), 12, scoreColor, true);
     y -= 28;
-    text("ATS Risk Level", 58, y, 11, pdfColors.ink, "bold");
+    text(copy.riskLevel, 58, y, 11, pdfColors.ink, "bold");
     pill(analysis.atsRiskLevel, 150, y, riskColor, 76);
-    y -= 30;
+    y -= 22;
+    paragraph(copy.scoreExplanation, 9.2, pdfColors.muted, 58, 92);
   }
 
-  function twoColumnLists(leftTitle: string, leftItems: string[], leftColor: PdfColor, rightTitle: string, rightItems: string[], rightColor: PdfColor) {
-    sectionTitle("Recruiter Review", "Strengths and weaknesses");
+  function twoColumnLists(
+    title: string,
+    eyebrow: string,
+    leftTitle: string,
+    leftItems: string[],
+    leftColor: PdfColor,
+    leftLabel: string,
+    rightTitle: string,
+    rightItems: string[],
+    rightColor: PdfColor,
+    rightLabel: string
+  ) {
+    sectionTitle(title, eyebrow);
     const startY = y;
-    listBlock(leftTitle, leftItems, leftColor, 58, 238, false);
+    listBlock(leftTitle, leftItems, leftColor, leftLabel, 58, 238, false);
     const leftEndY = y;
     y = startY;
-    listBlock(rightTitle, rightItems, rightColor, 316, 238, false);
+    listBlock(rightTitle, rightItems, rightColor, rightLabel, 316, 238, false);
     y = Math.min(leftEndY, y) - 4;
   }
 
-  function listBlock(title: string, items: string[], color: PdfColor, x: number, maxWidth: number, reserveSpace = true) {
+  function listBlock(title: string, items: string[], color: PdfColor, label: string, x: number, maxWidth: number, reserveSpace = true) {
     if (reserveSpace) {
       ensureSpace(60 + items.length * 28);
     }
@@ -752,31 +1183,31 @@ function createPdfRenderer() {
     y -= 30;
     const safeItems = items.length ? items : ["No items returned"];
     safeItems.forEach((item) => {
-      const lines = wrapPdfText(item, Math.floor(maxWidth / 5.4));
-      text("OK", x + 2, y, 8, color, "bold");
+      const lines = wrapPdfText(item, Math.floor((maxWidth - 76) / 5.4));
+      text(label, x + 2, y, 7.5, color, "bold");
       lines.forEach((lineText, lineIndex) => {
-        text(lineText, x + 24, y - lineIndex * 13, 9.2, pdfColors.muted);
+        text(lineText, x + 68, y - lineIndex * 13, 9.2, pdfColors.muted);
       });
       y -= Math.max(20, lines.length * 13 + 6);
     });
   }
 
-  function listSection(title: string, items: string[], color: PdfColor, icon: string) {
-    sectionTitle(title, "Actionable recommendations");
-    const safeItems = items.length ? items : ["No items returned"];
+  function listSection(title: string, eyebrow: string, items: string[], color: PdfColor, label: string, emptyLabel: string) {
+    sectionTitle(title, eyebrow);
+    const safeItems = items.length ? items : [emptyLabel];
     safeItems.forEach((item) => {
-      ensureSpace(44);
+      ensureSpace(58);
       const lines = wrapPdfText(item, 84);
       rect(58, y - lines.length * 13 - 10, 496, lines.length * 13 + 22, [248, 250, 252], true, pdfColors.line);
-      text(icon, 72, y, 8, color, "bold");
-      lines.forEach((lineText, index) => text(lineText, 112, y - index * 13, 9.4, pdfColors.muted));
+      text(label, 72, y, 8, color, "bold");
+      lines.forEach((lineText, index) => text(lineText, 130, y - index * 13, 9.4, pdfColors.muted));
       y -= lines.length * 13 + 28;
     });
   }
 
-  function pillsSection(title: string, items: string[], color: PdfColor) {
-    sectionTitle(title, "Keyword analysis");
-    const safeItems = items.length ? items : ["No keywords returned"];
+  function pillsSection(title: string, eyebrow: string, items: string[], color: PdfColor, emptyLabel: string) {
+    sectionTitle(title, eyebrow);
+    const safeItems = items.length ? items : [emptyLabel];
     let x = 58;
     safeItems.forEach((item) => {
       const label = sanitizePdfText(item).slice(0, 38);
@@ -792,18 +1223,104 @@ function createPdfRenderer() {
     y -= 36;
   }
 
-  function callout(value: string, color: PdfColor) {
-    const lines = wrapPdfText(value, 86);
-    ensureSpace(lines.length * 15 + 34);
-    rect(58, y - lines.length * 15 - 12, 496, lines.length * 15 + 28, [248, 250, 252], true, pdfColors.line);
-    rect(58, y - lines.length * 15 - 12, 4, lines.length * 15 + 28, color, true);
-    lines.forEach((lineText, index) => text(lineText, 76, y - index * 15, 10, pdfColors.muted));
-    y -= lines.length * 15 + 34;
+  function optimizedProfileSection(analysis: CvAnalysisResult, copy: ReportCopy, language: LanguageCode) {
+    sectionTitle(copy.optimizedCv, copy.optimizedCvEyebrow);
+    labeledCallout(copy.suggestedHeadline, buildSuggestedHeadline(analysis, language), pdfColors.purple);
+    labeledCallout(copy.rewrittenSummary, analysis.rewrittenProfessionalSummary, pdfColors.blue);
+    pillsInline(copy.recommendedSkills, analysis.recommendedSkillsToAdd, pdfColors.purple, copy.noKeywords);
+    listSection(copy.improvedExperiencePhrases, copy.optimizedCvEyebrow, buildImprovedExperiencePhrases(analysis, language), pdfColors.cyan, copy.improvementLabel, copy.noItems);
   }
 
-  function footer() {
+  function matchTableSection(
+    rows: Array<{ requirement: string; status: string; color: PdfColor; suggestion: string }>,
+    copy: ReportCopy
+  ) {
+    sectionTitle(copy.matchTable, copy.matchTableEyebrow);
+    ensureSpace(70);
+    rect(58, y - 12, 496, 26, [239, 246, 255], true, pdfColors.line);
+    text(copy.requiredRequirement, 70, y, 8, pdfColors.blue, "bold");
+    text(copy.cvStatus, 225, y, 8, pdfColors.blue, "bold");
+    text(copy.alignmentSuggestion, 310, y, 8, pdfColors.blue, "bold");
+    y -= 30;
+
+    rows.forEach((row) => {
+      const requirementLines = wrapPdfText(row.requirement, 24);
+      const suggestionLines = wrapPdfText(row.suggestion, 42);
+      const rowHeight = Math.max(requirementLines.length, suggestionLines.length) * 13 + 18;
+      ensureSpace(rowHeight + 8);
+      rect(58, y - rowHeight + 8, 496, rowHeight, [248, 250, 252], true, pdfColors.line);
+      requirementLines.forEach((lineText, index) => text(lineText, 70, y - index * 13, 9, pdfColors.ink));
+      pill(row.status, 220, y - 1, row.color, 72);
+      suggestionLines.forEach((lineText, index) => text(lineText, 310, y - index * 13, 8.8, pdfColors.muted));
+      y -= rowHeight + 6;
+    });
+  }
+
+  function actionPlanSection(items: string[], copy: ReportCopy) {
+    listSection(copy.actionPlan, copy.actionPlanEyebrow, items, pdfColors.blue, copy.dayLabel, copy.noItems);
+  }
+
+  function checklistSection(
+    items: Array<{ item: string; state: string; color: PdfColor; note: string }>,
+    copy: ReportCopy
+  ) {
+    sectionTitle(copy.atsChecklist, copy.atsChecklistEyebrow);
+    items.forEach((item) => {
+      const noteLines = wrapPdfText(item.note, 62);
+      const rowHeight = noteLines.length * 13 + 18;
+      ensureSpace(rowHeight + 8);
+      rect(58, y - rowHeight + 8, 496, rowHeight, [248, 250, 252], true, pdfColors.line);
+      text(item.item, 70, y, 9.5, pdfColors.ink, "bold");
+      pill(item.state, 212, y - 1, item.color, 82);
+      noteLines.forEach((lineText, index) => text(lineText, 312, y - index * 13, 8.8, pdfColors.muted));
+      y -= rowHeight + 6;
+    });
+  }
+
+  function labeledCallout(label: string, value: string, color: PdfColor) {
+    ensureSpace(88);
+    text(label.toUpperCase(), 58, y, 8, color, "bold");
+    y -= 14;
+    callout(value, color);
+  }
+
+  function pillsInline(title: string, items: string[], color: PdfColor, emptyLabel: string) {
+    ensureSpace(70);
+    text(title, 58, y, 11, pdfColors.ink, "bold");
+    y -= 22;
+    const safeItems = items.length ? items : [emptyLabel];
+    let x = 58;
+    safeItems.slice(0, 8).forEach((item) => {
+      const label = sanitizePdfText(item).slice(0, 34);
+      const width = Math.max(58, label.length * 5 + 18);
+      if (x + width > 554) {
+        x = 58;
+        y -= 26;
+      }
+      pill(label, x, y, color, width);
+      x += width + 8;
+    });
+    y -= 36;
+  }
+
+  function callout(value: string, color: PdfColor) {
+    const groups = splitPdfParagraphs(value).map((block) => wrapPdfText(block, 86));
+    const required = groups.reduce((total, lines) => total + lines.length * 15 + 8, 34);
+    ensureSpace(Math.min(required, 280));
+    groups.forEach((lines) => {
+      const blockHeight = lines.length * 15 + 20;
+      ensureSpace(blockHeight + 8);
+      rect(58, y - lines.length * 15 - 12, 496, lines.length * 15 + 28, [248, 250, 252], true, pdfColors.line);
+      rect(58, y - lines.length * 15 - 12, 4, lines.length * 15 + 28, color, true);
+      lines.forEach((lineText, index) => text(lineText, 76, y - index * 15, 10, pdfColors.muted));
+      y -= lines.length * 15 + 28;
+    });
+    y -= 4;
+  }
+
+  function footer(copy: ReportCopy) {
     pages.forEach((pdfPage, index) => {
-      pdfPage.push(`BT ${rgb(pdfColors.muted)} rg /F1 8 Tf 58 24 Td (${escapePdfText(`CV Match Analyzer - Page ${index + 1}`)}) Tj ET`);
+      pdfPage.push(`BT ${rgb(pdfColors.muted)} rg /F1 8 Tf 58 24 Td (${escapePdfText(`${copy.footer} - ${copy.page} ${index + 1}/${pages.length}`)}) Tj ET`);
     });
   }
 
@@ -815,7 +1332,11 @@ function createPdfRenderer() {
     callout,
     footer,
     header,
+    actionPlanSection,
+    checklistSection,
+    matchTableSection,
     listSection,
+    optimizedProfileSection,
     paragraph,
     pillsSection,
     scoreSection,
@@ -916,6 +1437,23 @@ function wrapPdfText(text: string, maxLength: number) {
   }
 
   return lines;
+}
+
+function splitPdfParagraphs(text: string) {
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((paragraph) => sanitizePdfText(paragraph))
+    .filter(Boolean);
+
+  return paragraphs.length ? paragraphs : [sanitizePdfText(text)];
+}
+
+function formatReportDate(language: LanguageCode) {
+  return new Intl.DateTimeFormat(language === "it" ? "it-IT" : "en-US", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(new Date());
 }
 
 function sanitizePdfText(text: string) {
