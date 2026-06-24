@@ -273,7 +273,7 @@ function PaywallCard({
 }) {
   return (
     <div className="flex items-center justify-center">
-      <div className="glass-card w-full max-w-4xl rounded-3xl p-6 text-center md:p-8">
+      <div className="glass-card w-full max-w-4xl rounded-3xl p-5 text-center sm:p-6 md:p-8">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/20">
           <Lock size={28} aria-hidden="true" />
         </div>
@@ -281,35 +281,37 @@ function PaywallCard({
         <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600">
           Unlock complete ATS breakdown, keyword gaps and CV optimization strategy.
         </p>
-        {adminBypassEnabled ? <AdminBypassPanel isLoading={isLoading} onUnlock={onAdminUnlock} /> : null}
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <OfferCard
-            description="Compatibility analysis, match score, 3 strengths, 3 key weaknesses and concise CV improvement tips."
-            isLoading={isLoading}
-            name="Base"
-            price={"9,99\u20ac"}
-            cta="Unlock Base"
-            onClick={() => onUnlock("base")}
-          />
-          <OfferCard
-            description="Everything in Base plus full keyword analysis, deeper recommendations, rewritten CV sections and cover letter draft."
-            featured
-            isLoading={isLoading}
-            name="Premium"
-            price={"19,99\u20ac"}
-            cta="Unlock Premium"
-            onClick={() => onUnlock("premium")}
-          />
-        </div>
-        <div className="mt-5 flex flex-wrap justify-center gap-3 text-sm font-medium text-slate-600">
-          <span className="inline-flex items-center gap-2">
-            <ShieldCheck size={15} className="text-emerald-600" aria-hidden="true" />
-            Secure payment powered by Stripe
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <Zap size={15} className="text-blue-600" aria-hidden="true" />
-            Instant access after payment
-          </span>
+        <div className="mx-auto mt-6 w-full max-w-3xl space-y-5">
+          {adminBypassEnabled ? <AdminBypassPanel isLoading={isLoading} onUnlock={onAdminUnlock} /> : null}
+          <div className="grid items-stretch gap-4 md:grid-cols-2">
+            <OfferCard
+              description="Compatibility analysis, match score, 3 strengths, 3 key weaknesses and concise CV improvement tips."
+              isLoading={isLoading}
+              name="Base"
+              price={"9,99\u20ac"}
+              cta="Unlock Base"
+              onClick={() => onUnlock("base")}
+            />
+            <OfferCard
+              description="Everything in Base plus full keyword analysis, deeper recommendations, rewritten CV sections and cover letter draft."
+              featured
+              isLoading={isLoading}
+              name="Premium"
+              price={"19,99\u20ac"}
+              cta="Unlock Premium"
+              onClick={() => onUnlock("premium")}
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-medium text-slate-600">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck size={15} className="text-emerald-600" aria-hidden="true" />
+              Secure payment powered by Stripe
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Zap size={15} className="text-blue-600" aria-hidden="true" />
+              Instant access after payment
+            </span>
+          </div>
         </div>
         {error ? <p className="mt-4 text-sm leading-6 text-red-600">{error}</p> : null}
       </div>
@@ -325,21 +327,21 @@ function AdminBypassPanel({
   onUnlock: (plan: CheckoutPlan) => void;
 }) {
   return (
-    <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left sm:p-5">
+      <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="min-w-0">
           <span className="inline-flex rounded-full bg-amber-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
             ADMIN MODE
           </span>
-          <p className="mt-2 text-sm font-medium text-amber-900">
+          <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-amber-900">
             Payment bypass active. Use this only to test Base and Premium without Stripe.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto lg:min-w-[300px]">
           <Button
             type="button"
             variant="secondary"
-            className="rounded-xl border border-amber-200 bg-white text-amber-900 hover:bg-amber-100"
+            className="h-12 rounded-xl border border-amber-200 bg-white px-5 text-amber-900 hover:bg-amber-100"
             disabled={isLoading}
             onClick={() => onUnlock("base")}
           >
@@ -347,7 +349,7 @@ function AdminBypassPanel({
           </Button>
           <Button
             type="button"
-            className="rounded-xl bg-amber-500 text-white hover:bg-amber-600"
+            className="h-12 rounded-xl bg-amber-500 px-5 text-white hover:bg-amber-600"
             disabled={isLoading}
             onClick={() => onUnlock("premium")}
           >
@@ -377,9 +379,9 @@ function OfferCard({
   price: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-5 text-left transition duration-200 hover:-translate-y-0.5 ${featured ? "border-blue-200 bg-blue-50 shadow-lg shadow-blue-100/70" : "border-slate-200 bg-white"}`}>
+    <div className={`flex h-full min-h-[260px] flex-col rounded-2xl border p-5 text-left transition duration-200 hover:-translate-y-0.5 ${featured ? "border-blue-200 bg-blue-50 shadow-lg shadow-blue-100/70" : "border-slate-200 bg-white"}`}>
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">{name}</p>
           <p className="mt-2 text-3xl font-bold text-slate-950">{price}</p>
           <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
@@ -388,7 +390,7 @@ function OfferCard({
       </div>
       <Button
         onClick={onClick}
-        className={`mt-5 h-12 w-full rounded-2xl ${featured ? "bg-gradient-to-r from-blue-600 to-violet-600 shadow-lg shadow-blue-500/20" : "border border-slate-200 bg-slate-900 text-white hover:bg-slate-800"}`}
+        className={`mt-auto h-12 w-full rounded-2xl ${featured ? "bg-gradient-to-r from-blue-600 to-violet-600 shadow-lg shadow-blue-500/20" : "border border-slate-200 bg-slate-900 text-white hover:bg-slate-800"}`}
         disabled={isLoading}
       >
         {isLoading ? (
@@ -1059,9 +1061,13 @@ function createPdfRenderer() {
   const pages: PdfPage[] = [[]];
   let page = pages[0];
   let y = 742;
+  const pageLeft = 58;
+  const pageRight = 554;
+  const pageWidth = pageRight - pageLeft;
+  const pageBottom = 64;
 
   function ensureSpace(required: number, startNewPage = false) {
-    if (startNewPage || y - required < 64) {
+    if (startNewPage || y - required < pageBottom) {
       page = [];
       pages.push(page);
       y = 742;
@@ -1093,7 +1099,7 @@ function createPdfRenderer() {
 
   function paragraph(value: string, size = 10.5, color = pdfColors.muted, x = 58, maxLength = 92) {
     const blocks = splitPdfParagraphs(value);
-    const lineGroups = blocks.map((block) => wrapPdfText(block, maxLength));
+    const lineGroups = blocks.map((block) => wrapPdfText(block, maxLength, 14));
     const required = lineGroups.reduce((total, lines) => total + lines.length * 15 + 8, 10);
     ensureSpace(required);
     lineGroups.forEach((lines) => {
@@ -1115,7 +1121,7 @@ function createPdfRenderer() {
     }
     text(title, 58, y, 17, pdfColors.ink, "bold");
     y -= 13;
-    line(58, y, 554, y, pdfColors.line);
+    line(pageLeft, y, pageRight, y, pdfColors.line);
     y -= 18;
   }
 
@@ -1125,17 +1131,28 @@ function createPdfRenderer() {
     text("CV Match Analyzer", 58, 724, 22, pdfColors.ink, "bold");
     text(copy.premiumLabel, 58, 704, 10.5, pdfColors.muted);
     text(`${copy.generatedOn} ${formatReportDate(language)}`, 58, 686, 9, pdfColors.muted);
-    text(copy.atsMatchScore.toUpperCase(), 420, 724, 8, pdfColors.muted, "bold");
-    text(`${analysis.overallMatchScore}/100`, 420, 696, 30, scoreColor, "bold");
-    pill(`${copy.riskLevel}: ${analysis.atsRiskLevel}`, 420, 662, riskColor, 126);
+    text(copy.atsMatchScore.toUpperCase(), 408, 724, 8, pdfColors.muted, "bold");
+    text(`${analysis.overallMatchScore}/100`, 408, 696, 30, scoreColor, "bold");
+    pillBlock(`${copy.riskLevel}: ${analysis.atsRiskLevel}`, 408, 668, riskColor, 140);
     y = 620;
   }
 
   function pill(label: string, x: number, pillY: number, color: PdfColor, width?: number) {
-    const pillWidth = width ?? Math.max(62, sanitizePdfText(label).length * 5.2 + 18);
+    const availableWidth = Math.max(42, pageRight - x);
+    const requestedWidth = width ?? Math.max(62, sanitizePdfText(label).length * 5.2 + 18);
+    const pillWidth = Math.min(requestedWidth, availableWidth);
     rect(x, pillY - 5, pillWidth, 18, [248, 250, 252], true, color);
-    text(label, x + 9, pillY, 8.5, color, "bold");
+    text(fitPdfText(label, Math.max(4, Math.floor((pillWidth - 18) / 4.7))), x + 9, pillY, 8.5, color, "bold");
     return pillWidth;
+  }
+
+  function pillBlock(label: string, x: number, topY: number, color: PdfColor, maxWidth: number) {
+    const width = Math.min(maxWidth, pageRight - x);
+    const lines = boundedLines(label, width - 18, 8.5, 2);
+    const height = Math.max(20, lines.length * 11 + 10);
+    rect(x, topY - height, width, height, [248, 250, 252], true, color);
+    lines.forEach((lineText, index) => text(lineText, x + 9, topY - 12 - index * 11, 8.5, color, "bold"));
+    return height;
   }
 
   function scoreSection(analysis: CvAnalysisResult, copy: ReportCopy, scoreColor: PdfColor, riskColor: PdfColor) {
@@ -1144,11 +1161,11 @@ function createPdfRenderer() {
     text(copy.overallMatch, 58, y, 11, pdfColors.ink, "bold");
     text(`${analysis.overallMatchScore}%`, 500, y, 13, scoreColor, "bold");
     y -= 20;
-    rect(58, y, 496, 12, [226, 232, 240], true);
-    rect(58, y, Math.max(8, 496 * (analysis.overallMatchScore / 100)), 12, scoreColor, true);
+    rect(pageLeft, y, pageWidth, 12, [226, 232, 240], true);
+    rect(pageLeft, y, Math.max(8, pageWidth * (analysis.overallMatchScore / 100)), 12, scoreColor, true);
     y -= 28;
     text(copy.riskLevel, 58, y, 11, pdfColors.ink, "bold");
-    pill(analysis.atsRiskLevel, 150, y, riskColor, 76);
+    pillBlock(analysis.atsRiskLevel, 150, y + 6, riskColor, 92);
     y -= 22;
     paragraph(copy.scoreExplanation, 9.2, pdfColors.muted, 58, 92);
   }
@@ -1183,7 +1200,8 @@ function createPdfRenderer() {
     y -= 30;
     const safeItems = items.length ? items : ["No items returned"];
     safeItems.forEach((item) => {
-      const lines = wrapPdfText(item, Math.floor((maxWidth - 76) / 5.4));
+      const lines = boundedLines(item, maxWidth - 76, 9.2, 8);
+      ensureSpace(lines.length * 13 + 10);
       text(label, x + 2, y, 7.5, color, "bold");
       lines.forEach((lineText, lineIndex) => {
         text(lineText, x + 68, y - lineIndex * 13, 9.2, pdfColors.muted);
@@ -1196,9 +1214,10 @@ function createPdfRenderer() {
     sectionTitle(title, eyebrow);
     const safeItems = items.length ? items : [emptyLabel];
     safeItems.forEach((item) => {
-      ensureSpace(58);
-      const lines = wrapPdfText(item, 84);
-      rect(58, y - lines.length * 13 - 10, 496, lines.length * 13 + 22, [248, 250, 252], true, pdfColors.line);
+      const lines = boundedLines(item, 402, 9.4, 10);
+      const boxHeight = lines.length * 13 + 22;
+      ensureSpace(boxHeight + 8);
+      rect(pageLeft, y - lines.length * 13 - 10, pageWidth, boxHeight, [248, 250, 252], true, pdfColors.line);
       text(label, 72, y, 8, color, "bold");
       lines.forEach((lineText, index) => text(lineText, 130, y - index * 13, 9.4, pdfColors.muted));
       y -= lines.length * 13 + 28;
@@ -1210,14 +1229,16 @@ function createPdfRenderer() {
     const safeItems = items.length ? items : [emptyLabel];
     let x = 58;
     safeItems.forEach((item) => {
-      const label = sanitizePdfText(item).slice(0, 38);
-      const width = Math.max(58, label.length * 5.1 + 18);
+      const label = sanitizePdfText(item);
+      const width = Math.min(168, Math.max(64, label.length * 5.1 + 18));
+      const lines = boundedLines(label, width - 18, 8.5, 3);
+      const height = Math.max(20, lines.length * 11 + 10);
       if (x + width > 554) {
         x = 58;
-        y -= 28;
+        y -= height + 8;
       }
-      ensureSpace(32);
-      pill(label, x, y, color, width);
+      ensureSpace(height + 14);
+      pillBlock(label, x, y + 5, color, width);
       x += width + 8;
     });
     y -= 36;
@@ -1237,20 +1258,21 @@ function createPdfRenderer() {
   ) {
     sectionTitle(copy.matchTable, copy.matchTableEyebrow);
     ensureSpace(70);
-    rect(58, y - 12, 496, 26, [239, 246, 255], true, pdfColors.line);
+    rect(pageLeft, y - 12, pageWidth, 26, [239, 246, 255], true, pdfColors.line);
     text(copy.requiredRequirement, 70, y, 8, pdfColors.blue, "bold");
     text(copy.cvStatus, 225, y, 8, pdfColors.blue, "bold");
     text(copy.alignmentSuggestion, 310, y, 8, pdfColors.blue, "bold");
     y -= 30;
 
     rows.forEach((row) => {
-      const requirementLines = wrapPdfText(row.requirement, 24);
-      const suggestionLines = wrapPdfText(row.suggestion, 42);
-      const rowHeight = Math.max(requirementLines.length, suggestionLines.length) * 13 + 18;
+      const requirementLines = boundedLines(row.requirement, 130, 9, 5);
+      const statusLines = boundedLines(row.status, 70, 8.5, 2);
+      const suggestionLines = boundedLines(row.suggestion, 230, 8.8, 6);
+      const rowHeight = Math.max(requirementLines.length, statusLines.length, suggestionLines.length) * 13 + 22;
       ensureSpace(rowHeight + 8);
-      rect(58, y - rowHeight + 8, 496, rowHeight, [248, 250, 252], true, pdfColors.line);
+      rect(pageLeft, y - rowHeight + 8, pageWidth, rowHeight, [248, 250, 252], true, pdfColors.line);
       requirementLines.forEach((lineText, index) => text(lineText, 70, y - index * 13, 9, pdfColors.ink));
-      pill(row.status, 220, y - 1, row.color, 72);
+      pillBlock(row.status, 220, y + 5, row.color, 72);
       suggestionLines.forEach((lineText, index) => text(lineText, 310, y - index * 13, 8.8, pdfColors.muted));
       y -= rowHeight + 6;
     });
@@ -1266,12 +1288,14 @@ function createPdfRenderer() {
   ) {
     sectionTitle(copy.atsChecklist, copy.atsChecklistEyebrow);
     items.forEach((item) => {
-      const noteLines = wrapPdfText(item.note, 62);
-      const rowHeight = noteLines.length * 13 + 18;
+      const itemLines = boundedLines(item.item, 128, 9.5, 3);
+      const stateLines = boundedLines(item.state, 78, 8.5, 2);
+      const noteLines = boundedLines(item.note, 230, 8.8, 5);
+      const rowHeight = Math.max(itemLines.length, stateLines.length, noteLines.length) * 13 + 22;
       ensureSpace(rowHeight + 8);
-      rect(58, y - rowHeight + 8, 496, rowHeight, [248, 250, 252], true, pdfColors.line);
-      text(item.item, 70, y, 9.5, pdfColors.ink, "bold");
-      pill(item.state, 212, y - 1, item.color, 82);
+      rect(pageLeft, y - rowHeight + 8, pageWidth, rowHeight, [248, 250, 252], true, pdfColors.line);
+      itemLines.forEach((lineText, index) => text(lineText, 70, y - index * 13, 9.5, pdfColors.ink, "bold"));
+      pillBlock(item.state, 212, y + 5, item.color, 82);
       noteLines.forEach((lineText, index) => text(lineText, 312, y - index * 13, 8.8, pdfColors.muted));
       y -= rowHeight + 6;
     });
@@ -1291,27 +1315,30 @@ function createPdfRenderer() {
     const safeItems = items.length ? items : [emptyLabel];
     let x = 58;
     safeItems.slice(0, 8).forEach((item) => {
-      const label = sanitizePdfText(item).slice(0, 34);
-      const width = Math.max(58, label.length * 5 + 18);
+      const label = sanitizePdfText(item);
+      const width = Math.min(168, Math.max(58, label.length * 5 + 18));
+      const lines = boundedLines(label, width - 18, 8.5, 3);
+      const height = Math.max(20, lines.length * 11 + 10);
       if (x + width > 554) {
         x = 58;
-        y -= 26;
+        y -= height + 8;
       }
-      pill(label, x, y, color, width);
+      ensureSpace(height + 12);
+      pillBlock(label, x, y + 5, color, width);
       x += width + 8;
     });
     y -= 36;
   }
 
   function callout(value: string, color: PdfColor) {
-    const groups = splitPdfParagraphs(value).map((block) => wrapPdfText(block, 86));
+    const groups = splitPdfParagraphs(value).map((block) => boundedLines(block, 464, 10, 18));
     const required = groups.reduce((total, lines) => total + lines.length * 15 + 8, 34);
     ensureSpace(Math.min(required, 280));
     groups.forEach((lines) => {
       const blockHeight = lines.length * 15 + 20;
       ensureSpace(blockHeight + 8);
-      rect(58, y - lines.length * 15 - 12, 496, lines.length * 15 + 28, [248, 250, 252], true, pdfColors.line);
-      rect(58, y - lines.length * 15 - 12, 4, lines.length * 15 + 28, color, true);
+      rect(pageLeft, y - lines.length * 15 - 12, pageWidth, lines.length * 15 + 28, [248, 250, 252], true, pdfColors.line);
+      rect(pageLeft, y - lines.length * 15 - 12, 4, lines.length * 15 + 28, color, true);
       lines.forEach((lineText, index) => text(lineText, 76, y - index * 15, 10, pdfColors.muted));
       y -= lines.length * 15 + 28;
     });
@@ -1412,13 +1439,17 @@ function rgb(color: PdfColor) {
   return color.map((value) => (value / 255).toFixed(3)).join(" ");
 }
 
-function wrapPdfText(text: string, maxLength: number) {
+function boundedLines(text: string, maxWidth: number, fontSize: number, maxLines = 12) {
+  return wrapPdfText(text, Math.max(8, Math.floor(maxWidth / (fontSize * 0.52))), maxLines);
+}
+
+function wrapPdfText(text: string, maxLength: number, maxLines = Number.POSITIVE_INFINITY) {
   const sanitized = sanitizePdfText(text);
   if (!sanitized) {
     return [""];
   }
 
-  const words = sanitized.split(/\s+/);
+  const words = sanitized.split(/\s+/).flatMap((word) => splitLongPdfWord(word, maxLength));
   const lines: string[] = [];
   let currentLine = "";
 
@@ -1436,7 +1467,36 @@ function wrapPdfText(text: string, maxLength: number) {
     lines.push(currentLine);
   }
 
-  return lines;
+  if (lines.length <= maxLines) {
+    return lines;
+  }
+
+  const bounded = lines.slice(0, maxLines);
+  bounded[bounded.length - 1] = fitPdfText(`${bounded[bounded.length - 1]}...`, maxLength);
+  return bounded;
+}
+
+function splitLongPdfWord(word: string, maxLength: number) {
+  if (word.length <= maxLength) {
+    return [word];
+  }
+
+  const chunks: string[] = [];
+  for (let index = 0; index < word.length; index += Math.max(4, maxLength - 1)) {
+    const chunk = word.slice(index, index + Math.max(4, maxLength - 1));
+    chunks.push(index + Math.max(4, maxLength - 1) < word.length ? `${chunk}-` : chunk);
+  }
+
+  return chunks;
+}
+
+function fitPdfText(text: string, maxLength: number) {
+  const sanitized = sanitizePdfText(text);
+  if (sanitized.length <= maxLength) {
+    return sanitized;
+  }
+
+  return `${sanitized.slice(0, Math.max(1, maxLength - 3)).trim()}...`;
 }
 
 function splitPdfParagraphs(text: string) {
