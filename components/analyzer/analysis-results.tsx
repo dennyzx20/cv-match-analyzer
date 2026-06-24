@@ -14,8 +14,13 @@ type AnalysisResultsProps = {
   isPaymentSuccess: boolean;
   leadCapture: LeadCapture | null;
   purchasedPlan: "base" | "premium" | null;
+  adminBypassEnabled: boolean;
   onReset: () => void;
 };
+
+type CheckoutPlan = "base" | "premium";
+
+const pendingCheckoutKey = "cv-match-analyzer-pending-checkout";
 
 export function AnalysisResults({
   analysisId,
@@ -25,6 +30,7 @@ export function AnalysisResults({
   isPaymentSuccess,
   leadCapture,
   purchasedPlan,
+  adminBypassEnabled,
   onReset
 }: AnalysisResultsProps) {
   const [checkoutError, setCheckoutError] = useState("");
@@ -32,7 +38,7 @@ export function AnalysisResults({
   const previewMissingKeywords = useMemo(() => analysis.missingKeywords.slice(0, 3), [analysis.missingKeywords]);
   const previewStrengths = useMemo(() => analysis.strengths.slice(0, 3), [analysis.strengths]);
 
-  const handleUnlock = useCallback(async (plan: "base" | "premium") => {
+  const handleUnlock = useCallback(async (plan: CheckoutPlan) => {
     setCheckoutError("");
     setIsCheckoutLoading(true);
 
@@ -50,11 +56,24 @@ export function AnalysisResults({
         throw new Error(data.error || "Stripe checkout could not be started.");
       }
 
+      writePendingCheckout(plan, analysisId, "stripe");
       window.location.href = data.url;
     } catch (error) {
       setCheckoutError(error instanceof Error ? error.message : "Stripe checkout could not be started.");
       setIsCheckoutLoading(false);
     }
+  }, [analysisId]);
+
+  const handleAdminUnlock = useCallback((plan: CheckoutPlan) => {
+    writePendingCheckout(plan, analysisId, "admin");
+    const redirectUrl = new URL("/analyzer", window.location.origin);
+    redirectUrl.searchParams.set("success", "true");
+    redirectUrl.searchParams.set("plan", plan);
+    if (analysisId) {
+      redirectUrl.searchParams.set("analysisId", analysisId);
+    }
+
+    window.location.href = redirectUrl.toString();
   }, [analysisId]);
 
   return (
@@ -98,7 +117,13 @@ export function AnalysisResults({
         </>
       ) : (
         <div>
-          <PaywallCard error={checkoutError} isLoading={isCheckoutLoading} onUnlock={handleUnlock} />
+          <PaywallCard
+            adminBypassEnabled={adminBypassEnabled}
+            error={checkoutError}
+            isLoading={isCheckoutLoading}
+            onAdminUnlock={handleAdminUnlock}
+            onUnlock={handleUnlock}
+          />
         </div>
       )}
 
@@ -223,13 +248,17 @@ function LanguageBadge({ language }: { language: LanguageCode }) {
 }
 
 function PaywallCard({
+  adminBypassEnabled,
   error,
   isLoading,
+  onAdminUnlock,
   onUnlock
 }: {
+  adminBypassEnabled: boolean;
   error: string;
   isLoading: boolean;
-  onUnlock: (plan: "base" | "premium") => void;
+  onAdminUnlock: (plan: CheckoutPlan) => void;
+  onUnlock: (plan: CheckoutPlan) => void;
 }) {
   return (
     <div className="flex items-center justify-center">
@@ -241,6 +270,7 @@ function PaywallCard({
         <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600">
           Unlock complete ATS breakdown, keyword gaps and CV optimization strategy.
         </p>
+        {adminBypassEnabled ? <AdminBypassPanel isLoading={isLoading} onUnlock={onAdminUnlock} /> : null}
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <OfferCard
             description="Compatibility analysis, match score, 3 strengths, 3 key weaknesses and concise CV improvement tips."
@@ -271,6 +301,48 @@ function PaywallCard({
           </span>
         </div>
         {error ? <p className="mt-4 text-sm leading-6 text-red-600">{error}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function AdminBypassPanel({
+  isLoading,
+  onUnlock
+}: {
+  isLoading: boolean;
+  onUnlock: (plan: CheckoutPlan) => void;
+}) {
+  return (
+    <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <span className="inline-flex rounded-full bg-amber-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+            ADMIN MODE
+          </span>
+          <p className="mt-2 text-sm font-medium text-amber-900">
+            Payment bypass active. Use this only to test Base and Premium without Stripe.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="secondary"
+            className="rounded-xl border border-amber-200 bg-white text-amber-900 hover:bg-amber-100"
+            disabled={isLoading}
+            onClick={() => onUnlock("base")}
+          >
+            Sblocca Base
+          </Button>
+          <Button
+            type="button"
+            className="rounded-xl bg-amber-500 text-white hover:bg-amber-600"
+            disabled={isLoading}
+            onClick={() => onUnlock("premium")}
+          >
+            Sblocca Premium
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -495,6 +567,22 @@ function downloadAnalysisPdf(analysis: CvAnalysisResult) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function writePendingCheckout(plan: CheckoutPlan, analysisId: string | null, source: "stripe" | "admin") {
+  if (!analysisId) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    pendingCheckoutKey,
+    JSON.stringify({
+      analysisId,
+      plan,
+      createdAt: new Date().toISOString(),
+      source
+    })
+  );
 }
 
 function buildCoverLetterDraft(analysis: CvAnalysisResult) {

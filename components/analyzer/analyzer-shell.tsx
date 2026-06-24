@@ -8,6 +8,17 @@ import type { AnalyzeResponse, CvAnalysisResult, LanguageCode, LeadCapture } fro
 
 const storedHistoryKey = "cv-match-analyzer-history";
 const latestAnalysisIdKey = "cv-match-analyzer-latest-id";
+const pendingCheckoutKey = "cv-match-analyzer-pending-checkout";
+const checkoutMaxAgeMs = 2 * 60 * 60 * 1000;
+
+type CheckoutPlan = "base" | "premium";
+
+type PendingCheckout = {
+  analysisId: string;
+  plan: CheckoutPlan;
+  createdAt: string;
+  source: "stripe" | "admin";
+};
 
 type StoredReport = {
   id: string;
@@ -19,7 +30,7 @@ type StoredReport = {
 
 type HistoryItem = StoredReport;
 
-export function AnalyzerShell() {
+export function AnalyzerShell({ adminBypassEnabled }: { adminBypassEnabled: boolean }) {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<CvAnalysisResult | null>(null);
   const [pendingAnalysisId, setPendingAnalysisId] = useState<string | null>(null);
@@ -44,8 +55,17 @@ export function AnalyzerShell() {
 
     setIsRestoringPayment(true);
     const requestedAnalysisId = params.get("analysisId");
-    const storedReport = readStoredReport(requestedAnalysisId) ?? readLatestStoredReport();
+    const requestedPlan: CheckoutPlan = params.get("plan") === "base" ? "base" : "premium";
+    const pendingCheckout = readPendingCheckout();
+    const isValidCheckout = isPendingCheckoutValid(pendingCheckout, requestedPlan, requestedAnalysisId);
+    const storedReport = isValidCheckout
+      ? readStoredReport(requestedAnalysisId ?? pendingCheckout?.analysisId) ?? readStoredReport(pendingCheckout?.analysisId)
+      : null;
+
     if (!storedReport) {
+      setIsRestoringPayment(false);
+      setError("We could not verify the payment session. Please start checkout again from your analysis.");
+      window.history.replaceState(null, "", "/analyzer");
       return;
     }
 
@@ -54,8 +74,9 @@ export function AnalyzerShell() {
     setDetectedLanguage(storedReport.detectedLanguage);
     setLeadCapture(storedReport.leadCapture);
     setIsFullReportUnlocked(true);
-    setPurchasedPlan(params.get("plan") === "base" ? "base" : "premium");
+    setPurchasedPlan(requestedPlan);
     setIsRestoringPayment(false);
+    clearPendingCheckout();
     window.history.replaceState(null, "", "/analyzer");
   }, []);
 
@@ -164,6 +185,7 @@ export function AnalyzerShell() {
           isPaymentSuccess={isFullReportUnlocked}
           leadCapture={leadCapture}
           purchasedPlan={purchasedPlan}
+          adminBypassEnabled={adminBypassEnabled}
           onReset={reset}
         />
       ) : pendingAnalysis ? (
@@ -215,6 +237,49 @@ function readLatestStoredReport(): StoredReport | null {
   }
 
   return readHistory()[0] ?? null;
+}
+
+function readPendingCheckout(): PendingCheckout | null {
+  try {
+    const raw = window.localStorage.getItem(pendingCheckoutKey);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as PendingCheckout;
+    if (
+      (parsed.plan !== "base" && parsed.plan !== "premium") ||
+      !parsed.analysisId ||
+      (parsed.source !== "stripe" && parsed.source !== "admin")
+    ) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function isPendingCheckoutValid(
+  pendingCheckout: PendingCheckout | null,
+  requestedPlan: CheckoutPlan,
+  requestedAnalysisId: string | null
+) {
+  if (!pendingCheckout || pendingCheckout.plan !== requestedPlan) {
+    return false;
+  }
+
+  if (requestedAnalysisId && pendingCheckout.analysisId !== requestedAnalysisId) {
+    return false;
+  }
+
+  const createdAt = new Date(pendingCheckout.createdAt).getTime();
+  return Number.isFinite(createdAt) && Date.now() - createdAt < checkoutMaxAgeMs;
+}
+
+function clearPendingCheckout() {
+  window.localStorage.removeItem(pendingCheckoutKey);
 }
 
 function getAnalysisStorageKey(analysisId: string) {
