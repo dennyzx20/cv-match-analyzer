@@ -621,9 +621,7 @@ function buildCoverLetterDraft(analysis: CvAnalysisResult, language: LanguageCod
         ? `Per aumentare l'allineamento con l'offerta, consiglierei inoltre di integrare meglio riferimenti a ${joinNaturalList(improvementFocus, "it")}, evitando un elenco generico e inserendoli invece nei punti del CV piu pertinenti.`
         : "Per aumentare l'allineamento con l'offerta, consiglierei inoltre di rendere piu esplicito il legame tra esperienze, competenze e requisiti indicati nell'annuncio.",
       "",
-      "Sarei lieto di approfondire in colloquio come il mio percorso possa rispondere alle necessita della posizione e contribuire agli obiettivi dell'azienda.",
-      "",
-      "Cordiali saluti"
+      "Sarei lieto di approfondire in colloquio come il mio percorso possa rispondere alle necessita della posizione e contribuire agli obiettivi dell'azienda.\nCordiali saluti"
     ].join("\n");
   }
 
@@ -644,9 +642,7 @@ function buildCoverLetterDraft(analysis: CvAnalysisResult, language: LanguageCod
       ? `To improve alignment with the role, I would also add clearer references to ${joinNaturalList(improvementFocus, "en")}, placing them in the most relevant CV sections rather than listing them generically.`
       : "To improve alignment with the role, I would make the connection between experience, skills and the job requirements more explicit throughout the CV.",
     "",
-    "I would welcome the opportunity to discuss how my background can support the needs of the position and contribute to your team's goals.",
-    "",
-    "Kind regards"
+    "I would welcome the opportunity to discuss how my background can support the needs of the position and contribute to your team's goals.\nKind regards"
   ].join("\n");
 }
 
@@ -1041,16 +1037,16 @@ function buildPremiumPdfReport(analysis: CvAnalysisResult, language: LanguageCod
   renderer.matchTableSection(buildRequirementRows(analysis, copy, language), copy);
   renderer.actionPlanSection(buildSevenDayPlan(analysis, language), copy);
   renderer.checklistSection(buildAtsChecklist(analysis, copy, language), copy);
-  renderer.sectionTitle(copy.shortEmail, copy.shortEmailEyebrow);
+  renderer.sectionTitle(copy.shortEmail, copy.shortEmailEyebrow, 180);
   renderer.callout(buildShortApplicationEmail(analysis, language), pdfColors.blue);
-  renderer.sectionTitle(copy.recruiterSimulation, copy.recruiterSimulationEyebrow);
+  renderer.sectionTitle(copy.recruiterSimulation, copy.recruiterSimulationEyebrow, 170);
   renderer.callout(buildRecruiterSimulation(analysis, language), pdfColors.purple);
-  renderer.sectionTitle(copy.rewrittenSummary, copy.rewrittenEyebrow);
+  renderer.sectionTitle(copy.rewrittenSummary, copy.rewrittenEyebrow, 170);
   renderer.callout(analysis.rewrittenProfessionalSummary, pdfColors.blue);
   renderer.pillsSection(copy.recommendedSkills, copy.keywordEyebrow, analysis.recommendedSkillsToAdd, pdfColors.purple, copy.noKeywords);
-  renderer.sectionTitle(copy.finalRecommendation, copy.finalEyebrow);
+  renderer.sectionTitle(copy.finalRecommendation, copy.finalEyebrow, 170);
   renderer.callout(analysis.finalRecommendation, pdfColors.cyan);
-  renderer.sectionTitle(copy.coverLetter, copy.coverLetterEyebrow);
+  renderer.sectionTitle(copy.coverLetter, copy.coverLetterEyebrow, 430);
   renderer.callout(buildCoverLetterDraft(analysis, language), pdfColors.purple);
   renderer.footer(copy);
 
@@ -1072,7 +1068,10 @@ function createPdfRenderer() {
       pages.push(page);
       y = 742;
       drawPageChrome();
+      return true;
     }
+
+    return false;
   }
 
   function drawPageChrome() {
@@ -1112,8 +1111,8 @@ function createPdfRenderer() {
     y -= 4;
   }
 
-  function sectionTitle(title: string, eyebrow?: string) {
-    ensureSpace(92);
+  function sectionTitle(title: string, eyebrow?: string, minContentSpace = 72) {
+    ensureSpace(64 + minContentSpace);
     y -= 8;
     if (eyebrow) {
       text(eyebrow.toUpperCase(), 58, y, 8, pdfColors.blue, "bold");
@@ -1133,7 +1132,8 @@ function createPdfRenderer() {
     text(`${copy.generatedOn} ${formatReportDate(language)}`, 58, 686, 9, pdfColors.muted);
     text(copy.atsMatchScore.toUpperCase(), 408, 724, 8, pdfColors.muted, "bold");
     text(`${analysis.overallMatchScore}/100`, 408, 696, 30, scoreColor, "bold");
-    pillBlock(`${copy.riskLevel}: ${analysis.atsRiskLevel}`, 408, 668, riskColor, 140);
+    text(copy.riskLevel, 408, 676, 8, pdfColors.muted, "bold");
+    pillBlock(analysis.atsRiskLevel, 408, 662, riskColor, 92);
     y = 620;
   }
 
@@ -1165,8 +1165,9 @@ function createPdfRenderer() {
     rect(pageLeft, y, Math.max(8, pageWidth * (analysis.overallMatchScore / 100)), 12, scoreColor, true);
     y -= 28;
     text(copy.riskLevel, 58, y, 11, pdfColors.ink, "bold");
-    pillBlock(analysis.atsRiskLevel, 150, y + 6, riskColor, 92);
-    y -= 22;
+    y -= 16;
+    const riskBadgeHeight = pillBlock(analysis.atsRiskLevel, 58, y + 6, riskColor, 92);
+    y -= riskBadgeHeight + 8;
     paragraph(copy.scoreExplanation, 9.2, pdfColors.muted, 58, 92);
   }
 
@@ -1182,13 +1183,28 @@ function createPdfRenderer() {
     rightColor: PdfColor,
     rightLabel: string
   ) {
-    sectionTitle(title, eyebrow);
-    const startY = y;
-    listBlock(leftTitle, leftItems, leftColor, leftLabel, 58, 238, false);
-    const leftEndY = y;
-    y = startY;
-    listBlock(rightTitle, rightItems, rightColor, rightLabel, 316, 238, false);
-    y = Math.min(leftEndY, y) - 4;
+    sectionTitle(title, eyebrow, 170);
+    editorialListBlock(leftTitle, leftItems, leftColor, leftLabel);
+    editorialListBlock(rightTitle, rightItems, rightColor, rightLabel);
+  }
+
+  function editorialListBlock(title: string, items: string[], color: PdfColor, label: string) {
+    const safeItems = items.length ? items : ["No items returned"];
+    ensureSpace(64);
+    rect(pageLeft, y - 8, pageWidth, 24, [248, 250, 252], true, pdfColors.line);
+    text(title, pageLeft + 12, y, 11, color, "bold");
+    y -= 32;
+
+    safeItems.forEach((item) => {
+      const lines = boundedLines(item, pageWidth - 118, 9.3, 7);
+      const rowHeight = lines.length * 13 + 16;
+      ensureSpace(rowHeight + 6);
+      rect(pageLeft, y - rowHeight + 8, pageWidth, rowHeight, [250, 252, 255], true, pdfColors.line);
+      text(label, pageLeft + 14, y, 7.5, color, "bold");
+      lines.forEach((lineText, index) => text(lineText, pageLeft + 116, y - index * 13, 9.3, pdfColors.muted));
+      y -= rowHeight + 6;
+    });
+    y -= 8;
   }
 
   function listBlock(title: string, items: string[], color: PdfColor, label: string, x: number, maxWidth: number, reserveSpace = true) {
@@ -1256,26 +1272,32 @@ function createPdfRenderer() {
     rows: Array<{ requirement: string; status: string; color: PdfColor; suggestion: string }>,
     copy: ReportCopy
   ) {
-    sectionTitle(copy.matchTable, copy.matchTableEyebrow);
-    ensureSpace(70);
-    rect(pageLeft, y - 12, pageWidth, 26, [239, 246, 255], true, pdfColors.line);
-    text(copy.requiredRequirement, 70, y, 8, pdfColors.blue, "bold");
-    text(copy.cvStatus, 225, y, 8, pdfColors.blue, "bold");
-    text(copy.alignmentSuggestion, 310, y, 8, pdfColors.blue, "bold");
-    y -= 30;
+    sectionTitle(copy.matchTable, copy.matchTableEyebrow, 130);
+    drawMatchTableHeader(copy);
 
     rows.forEach((row) => {
       const requirementLines = boundedLines(row.requirement, 130, 9, 5);
       const statusLines = boundedLines(row.status, 70, 8.5, 2);
       const suggestionLines = boundedLines(row.suggestion, 230, 8.8, 6);
       const rowHeight = Math.max(requirementLines.length, statusLines.length, suggestionLines.length) * 13 + 22;
-      ensureSpace(rowHeight + 8);
+      if (ensureSpace(rowHeight + 38)) {
+        drawMatchTableHeader(copy);
+      }
       rect(pageLeft, y - rowHeight + 8, pageWidth, rowHeight, [248, 250, 252], true, pdfColors.line);
       requirementLines.forEach((lineText, index) => text(lineText, 70, y - index * 13, 9, pdfColors.ink));
       pillBlock(row.status, 220, y + 5, row.color, 72);
       suggestionLines.forEach((lineText, index) => text(lineText, 310, y - index * 13, 8.8, pdfColors.muted));
       y -= rowHeight + 6;
     });
+  }
+
+  function drawMatchTableHeader(copy: ReportCopy) {
+    ensureSpace(40);
+    rect(pageLeft, y - 12, pageWidth, 26, [239, 246, 255], true, pdfColors.line);
+    text(copy.requiredRequirement, 70, y, 8, pdfColors.blue, "bold");
+    text(copy.cvStatus, 225, y, 8, pdfColors.blue, "bold");
+    text(copy.alignmentSuggestion, 310, y, 8, pdfColors.blue, "bold");
+    y -= 30;
   }
 
   function actionPlanSection(items: string[], copy: ReportCopy) {
@@ -1286,19 +1308,31 @@ function createPdfRenderer() {
     items: Array<{ item: string; state: string; color: PdfColor; note: string }>,
     copy: ReportCopy
   ) {
-    sectionTitle(copy.atsChecklist, copy.atsChecklistEyebrow);
+    sectionTitle(copy.atsChecklist, copy.atsChecklistEyebrow, 130);
+    drawChecklistHeader(copy);
     items.forEach((item) => {
       const itemLines = boundedLines(item.item, 128, 9.5, 3);
       const stateLines = boundedLines(item.state, 78, 8.5, 2);
       const noteLines = boundedLines(item.note, 230, 8.8, 5);
       const rowHeight = Math.max(itemLines.length, stateLines.length, noteLines.length) * 13 + 22;
-      ensureSpace(rowHeight + 8);
+      if (ensureSpace(rowHeight + 38)) {
+        drawChecklistHeader(copy);
+      }
       rect(pageLeft, y - rowHeight + 8, pageWidth, rowHeight, [248, 250, 252], true, pdfColors.line);
       itemLines.forEach((lineText, index) => text(lineText, 70, y - index * 13, 9.5, pdfColors.ink, "bold"));
       pillBlock(item.state, 212, y + 5, item.color, 82);
       noteLines.forEach((lineText, index) => text(lineText, 312, y - index * 13, 8.8, pdfColors.muted));
       y -= rowHeight + 6;
     });
+  }
+
+  function drawChecklistHeader(copy: ReportCopy) {
+    ensureSpace(40);
+    rect(pageLeft, y - 12, pageWidth, 26, [239, 246, 255], true, pdfColors.line);
+    text(copy.atsChecklist, 70, y, 8, pdfColors.blue, "bold");
+    text(copy.cvStatus, 212, y, 8, pdfColors.blue, "bold");
+    text(copy.alignmentSuggestion, 312, y, 8, pdfColors.blue, "bold");
+    y -= 30;
   }
 
   function labeledCallout(label: string, value: string, color: PdfColor) {
@@ -1333,11 +1367,11 @@ function createPdfRenderer() {
   function callout(value: string, color: PdfColor) {
     const groups = splitPdfParagraphs(value).map((block) => boundedLines(block, 464, 10, 18));
     const required = groups.reduce((total, lines) => total + lines.length * 15 + 8, 34);
-    ensureSpace(Math.min(required, 280));
+    ensureSpace(Math.min(Math.max(required, 120), 300));
     groups.forEach((lines) => {
       const blockHeight = lines.length * 15 + 20;
       ensureSpace(blockHeight + 8);
-      rect(pageLeft, y - lines.length * 15 - 12, pageWidth, lines.length * 15 + 28, [248, 250, 252], true, pdfColors.line);
+      rect(pageLeft, y - lines.length * 15 - 12, pageWidth, lines.length * 15 + 28, [250, 252, 255], true, pdfColors.line);
       rect(pageLeft, y - lines.length * 15 - 12, 4, lines.length * 15 + 28, color, true);
       lines.forEach((lineText, index) => text(lineText, 76, y - index * 15, 10, pdfColors.muted));
       y -= lines.length * 15 + 28;
@@ -1364,6 +1398,7 @@ function createPdfRenderer() {
     matchTableSection,
     listSection,
     optimizedProfileSection,
+    pageBreak: () => ensureSpace(0, true),
     paragraph,
     pillsSection,
     scoreSection,
